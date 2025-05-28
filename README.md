@@ -37,16 +37,10 @@ Rendering the Stanford Dragon shown above (871306 triangles) at 1920x1080px take
 
 ### Go Get
 
-    go get -u github.com/im-aeo/aeno
-
-### Go Run
-
-    cd go/src/github.com/im-aeo/aeno
-    go run examples/hello.go
-
+    go get -u github.com/netisu/aeno
 ### Go Doc
 
-https://godoc.org/github.com/im-aeo/aeno
+https://godoc.org/github.com/netisu/aeno
 
 ### Complete Example
 

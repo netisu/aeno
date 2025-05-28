@@ -1,4 +1,4 @@
-package aeno
+package github.com/netisu/aeno
 
 import (
 	"fmt"

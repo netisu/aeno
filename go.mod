@@ -1,4 +1,4 @@
-module github.com/im-aeo/aeno
+module github.com/netisu/aeno
 
 go 1.15
 

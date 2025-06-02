@@ -81,15 +81,15 @@ func Orient(position, size, up Vector, rotation float64) Matrix {
 
 // Frustum f
 func Frustum(left, right, bottom, top, near, far float64) Matrix {
-	rl := 1 / (right - left)
-	tb := 1 / (top - bottom)
-	nf := 1 / (near - far)
-	return Matrix{
-		2 * near * rl, 0, 0, 0,
-		0, 2 * near * tb, 0, 0,
-		0, 0, (far + near) * nf, -1,
-		0, 0, 2 * far * near * nf, 0,
-	}
+    rl := 1 / (right - left)
+    tb := 1 / (top - bottom)
+    nf := 1 / (near - far)
+    return Matrix{
+        2 * near * rl, 0, 0, 0,
+        0, 2 * near * tb, 0, 0,
+        0, 0, (far + near) * nf, -1,
+        0, 0, 2 * far * near * nf, 0,
+    }
 }
 
 // Orthographic f
@@ -103,9 +103,13 @@ func Orthographic(l, r, b, t, n, f float64) Matrix {
 
 // Perspective f
 func Perspective(fovy, aspect, near, far float64) Matrix {
-	ymax := near * math.Tan(fovy*math.Pi/360)
-	xmax := ymax * aspect
-	return Frustum(-xmax, xmax, -ymax, ymax, near, far)
+    f:= 1.0 / math.Tan(fovy*math.Pi/360.0)
+    return Matrix{
+        f / aspect, 0, 0, 0,
+        0, f, 0, 0,
+        0, 0, (far + near) / (near - far), (2 * far * near) / (near - far),
+        0, 0, -1, 0,
+    }
 }
 
 // LookAt f

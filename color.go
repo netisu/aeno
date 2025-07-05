@@ -63,7 +63,7 @@ func HexColor(x string) Color {
 
 // NRGBA returns nrgba color from fauxgl color
 func (a Color) NRGBA() color.NRGBA {
-	const d = 0xff
+	const d = 255.0
 	r := Clamp(a.R, 0, 1)
 	g := Clamp(a.G, 0, 1)
 	b := Clamp(a.B, 0, 1)

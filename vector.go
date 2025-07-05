@@ -96,8 +96,11 @@ func (a Vector) Cross(b Vector) Vector {
 
 // Normalize f
 func (a Vector) Normalize() Vector {
-	r := 1 / math.Sqrt(a.X*a.X+a.Y*a.Y+a.Z*a.Z)
-	return Vector{a.X * r, a.Y * r, a.Z * r}
+	d := a.Length()
+	if d == 0 {
+		return Vector{}
+	}
+	return a.DivScalar(d)
 }
 
 // Negate f

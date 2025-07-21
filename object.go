@@ -12,6 +12,7 @@ type Object struct {
 	Texture Texture
 	Color   Color
 	Matrix  mgl64.Mat4
+	UseVertexColor bool
 }
 
 // NewEmptyObject returns an empty object

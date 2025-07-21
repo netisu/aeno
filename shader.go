@@ -37,6 +37,13 @@ func (shader *PhongShader) Vertex(v Vertex) Vertex {
 
 // Fragment f
 func (shader *PhongShader) Fragment(v Vertex, fromObject *Object) Color {
+
+	// If the object is flagged to use vertex colors, we return the
+	// interpolated vertex color and skip all lighting and texturing.
+	if fromObject.UseVertexColor {
+		return v.Color
+	}
+	
 	light := shader.AmbientColor
 	color := fromObject.Color
 	if fromObject.Texture != nil {

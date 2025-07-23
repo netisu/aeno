@@ -2,7 +2,6 @@ package aeno
 
 import (
 	"net/http"
-	"github.com/go-gl/mathgl/mgl64"
 )
 
 // Object struct for objects
@@ -11,7 +10,7 @@ type Object struct {
 	Mesh    *Mesh
 	Texture Texture
 	Color   Color
-	Matrix  mgl64.Mat4
+	Matrix  aeno.Matrix
 	UseVertexColor bool
 }
 

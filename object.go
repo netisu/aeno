@@ -16,11 +16,11 @@ type Object struct {
 
 // NewEmptyObject returns an empty object
 func NewEmptyObject() *Object {
-    return &Object{Matrix: mgl64.Ident4()} // Initialize with identity!
+	return &Object{Matrix: aeno.Identity()}
 }
 
-func NewObject(triangles[]*Triangle, lines[]*Line) *Object {
-    return &Object{Mesh: NewMesh(triangles, lines), Matrix: mgl64.Ident4()} // Initialize with identity!
+func NewObject(triangles []*Triangle, lines []*Line) *Object {
+	return &Object{Mesh: NewMesh(triangles, lines), Matrix: aeno.Identity()}
 }
 
 func NewObjectFromMesh(mesh *Mesh) *Object {

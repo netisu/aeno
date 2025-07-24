@@ -97,8 +97,12 @@ func (s *Scene) Draw(fit bool, path string, objects []*Object) {
 	if fit {
 		s.Shader.Matrix = s.FitObjectsToScene(s.eye, s.center, s.up, s.fovy, s.aspect, 1, 999)
 	}
-viewProjectionMatrix := s.Shader.Matrix
-
+	
+	if callback != nil {
+		callback(s.Objects)
+	}
+	
+	viewProjectionMatrix := s.Shader.Matrix
 	for _, o := range s.Objects {
 		if o.Mesh == nil {
 			log.Printf("Object attempted to render with nil mesh")

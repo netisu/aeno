@@ -98,17 +98,26 @@ func (s *Scene) Draw(fit bool, path string, objects []*Object) {
 	if fit {
 		s.Shader.Matrix = s.FitObjectsToScene(s.eye, s.center, s.up, s.fovy, s.aspect, 1, 999)
 	}
-	var wg sync.WaitGroup
-	wg.Add(len(s.Objects))
+viewProjectionMatrix := s.Shader.Matrix
+
 	for _, o := range s.Objects {
 		if o.Mesh == nil {
-			wg.Done()
 			log.Printf("Object attempted to render with nil mesh")
 			continue
 		}
-		go s.Context.DrawObject(o, &wg)
+
+		//Calculate the final matrix for THIS object
+		// MVP = Projection * View * Model
+		modelMatrix := o.Matrix
+		finalMatrixForObject := viewProjectionMatrix.Mul(modelMatrix)
+
+		// 4. Temporarily set the final matrix on the main shader
+		s.Shader.Matrix = finalMatrixForObject
+
+		
+		s.Context.DrawObject(o)
 	}
-	wg.Wait()
+
 	image := s.Context.Image()
 	image = resize.Resize(512, 512, image, resize.Bilinear)
 

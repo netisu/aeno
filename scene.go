@@ -98,10 +98,6 @@ func (s *Scene) Draw(fit bool, path string, objects []*Object) {
 		s.Shader.Matrix = s.FitObjectsToScene(s.eye, s.center, s.up, s.fovy, s.aspect, 1, 999)
 	}
 	
-	if callback != nil {
-		callback(s.Objects)
-	}
-	
 	viewProjectionMatrix := s.Shader.Matrix
 	for _, o := range s.Objects {
 		if o.Mesh == nil {

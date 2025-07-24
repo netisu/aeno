@@ -436,7 +436,7 @@ func (dc *Context) DrawTriangles(o *Object) {
 }
 
 // DrawObject draws the given object
-func (dc *Context) DrawObject(o *Object, wg *sync.WaitGroup) {
+func (dc *Context) DrawObject(o *Object) {
 	dc.DrawTriangles(o)
 	dc.DrawLines(o)
 }

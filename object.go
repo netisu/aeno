@@ -11,6 +11,7 @@ type Object struct {
 	Texture        Texture
 	Color          Color
 	Matrix         Matrix // <-- No "aeno." prefix
+	Tag            string
 	UseVertexColor bool
 }
 
@@ -73,4 +74,15 @@ func LoadObjectFromURL(url string) *Mesh {
 		panic(err2)
 	}
 	return obj
+}
+
+// FindObjectByTag searches a slice of objects and returns the first
+// object that has a matching tag. It returns nil if not found.
+func FindObjectByTag(objects []*Object, tag string) *Object {
+	for _, obj := range objects {
+		if obj.Tag == tag {
+			return obj
+		}
+	}
+	return nil
 }

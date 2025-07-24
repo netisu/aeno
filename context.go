@@ -439,5 +439,4 @@ func (dc *Context) DrawTriangles(o *Object) {
 func (dc *Context) DrawObject(o *Object, wg *sync.WaitGroup) {
 	dc.DrawTriangles(o)
 	dc.DrawLines(o)
-	wg.Done()
 }

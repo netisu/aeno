@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"image/png"
 	"log"
-	"sync"
 
 	"github.com/nfnt/resize"
 )

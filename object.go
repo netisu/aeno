@@ -13,6 +13,7 @@ type Object struct {
 	Matrix         Matrix // <-- No "aeno." prefix
 	Tag            string
 	UseVertexColor bool
+	Outline        *Outline // Add this field
 }
 
 // NewEmptyObject returns an empty object
@@ -86,3 +87,4 @@ func FindObjectByTag(objects []*Object, tag string) *Object {
 	}
 	return nil
 }
+

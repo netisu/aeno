@@ -8,7 +8,7 @@ type SolidColorShader struct {
 }
 
 func NewSolidColorShader(matrix Matrix, color Color) *SolidColorShader {
-	return &SolidColorShader{matrix, color}
+	return &SolidColorShader{matrix, color, thickness}
 }
 
 func (s *SolidColorShader) Vertex(v Vertex) Vertex {

@@ -10,10 +10,10 @@ type Object struct {
 	Mesh           *Mesh
 	Texture        Texture
 	Color          Color
-	Matrix         Matrix // <-- No "aeno." prefix
+	Matrix         Matrix
 	Tag            string
 	UseVertexColor bool
-	Outline        *Outline // Add this field
+	Outline        *Outline
 }
 
 // NewEmptyObject returns an empty object
@@ -76,15 +76,3 @@ func LoadObjectFromURL(url string) *Mesh {
 	}
 	return obj
 }
-
-// FindObjectByTag searches a slice of objects and returns the first
-// object that has a matching tag. It returns nil if not found.
-func FindObjectByTag(objects []*Object, tag string) *Object {
-	for _, obj := range objects {
-		if obj.Tag == tag {
-			return obj
-		}
-	}
-	return nil
-}
-

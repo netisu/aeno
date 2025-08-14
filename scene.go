@@ -13,20 +13,17 @@ import (
 type Scene struct {
 	Context         *Context
 	Objects         []*Object
-	Shader          *PhongShader
+	Shader          Shader
 	eye, center, up Vector
 	fovy, aspect    float64
 }
 
 // NewScene returns a new scene
-func NewScene(eye Vector, center Vector, up Vector, fovy float64, size int, scale int, light Vector, ambient string, diffuse string, near, far float64) *Scene {
+func NewScene(eye Vector, center Vector, up Vector, fovy float64, size int, scale int, shader Shader) *Scene {
 	aspect := float64(size) / float64(size)
-	matrix := LookAt(eye, center, up).Perspective(fovy, aspect, near, far)
-	shader := NewPhongShader(matrix, light, eye, HexColor(ambient), HexColor(diffuse))
 	context := NewContext(size*scale, size*scale, 5, shader)
 	return &Scene{context, nil, shader, eye, center, up, fovy, aspect}
 }
-
 // AddObject adds an object to the scene
 func (s *Scene) AddObject(o *Object) {
 	s.Objects = append(s.Objects, o)
@@ -119,16 +116,17 @@ func (s *Scene) Draw(fit bool, path string, objects []*Object) {
 }
 
 func GenerateScene(fit bool, path string, objects []*Object, eye Vector, center Vector, up Vector, fovy float64, size int, scale int, light Vector, ambient string, diffuse string, near, far float64) {
-	scene := NewScene(eye, center, up, fovy, size, scale, light, ambient, diffuse, near, far)
+	// Create the default shader
+	aspect := float64(size) / float64(size)
+	matrix := LookAt(eye, center, up).Perspective(fovy, aspect, near, far)
+	defaultShader := NewPhongShader(matrix, light, eye, HexColor(ambient), HexColor(diffuse))
+
+	// Pass the created shader to the scene
+	scene := NewScene(eye, center, up, fovy, size, scale, defaultShader)
 	scene.Draw(fit, path, objects)
 }
-func GenerateSceneWithShader(fit bool, shader Shader, path string, objects []*Object, eye Vector, center Vector, up Vector, fovy float64, size int, scale int, light Vector, ambient string, diffuse string, near, far float64) {
-	// Create a scene, but pass the user's shader directly to the context.
-	scene := NewScene(eye, center, up, fovy, size, scale, light, ambient, diffuse, near, far)
-	scene.Shader = shader
-	scene.Context.Shader = shader
-
-	// Draw the scene as usual.
+func GenerateSceneWithShader(fit bool, shader Shader, path string, objects []*Object, eye Vector, center Vector, up Vector, fovy float64, size int, scale int) {
+	// Directly pass the provided shader to the scene
+	scene := NewScene(eye, center, up, fovy, size, scale, shader)
 	scene.Draw(fit, path, objects)
 }
-

@@ -29,7 +29,7 @@ func NewToonShader(matrix Matrix, lightDir Vector) *ToonShader {
 func (s *ToonShader) Vertex(v Vertex) Vertex {
 	v.Output = s.Matrix.MulPositionW(v.Position)
 	normalMatrix := s.Matrix.Inverse().Transpose()
-	v.Normal = s.Matrix.MulDirection(v.Normal).Normalize()
+	v.Normal = normalMatrix.MulDirection(v.Normal).Normalize()
 	return v
 }
 

@@ -4,6 +4,7 @@ package aeno
 type SolidColorShader struct {
 	Matrix Matrix
 	Color  Color
+	Thickness float64
 }
 
 func NewSolidColorShader(matrix Matrix, color Color) *SolidColorShader {
@@ -11,7 +12,8 @@ func NewSolidColorShader(matrix Matrix, color Color) *SolidColorShader {
 }
 
 func (s *SolidColorShader) Vertex(v Vertex) Vertex {
-	v.Output = s.Matrix.MulPositionW(v.Position)
+	extrudedPosition := v.Position.Add(v.Normal.MulScalar(s.Thickness))
+	v.Output = s.Matrix.MulPositionW(extrudedPosition)
 	return v
 }
 

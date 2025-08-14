@@ -437,48 +437,8 @@ func (dc *Context) DrawTriangles(o *Object) {
 
 func (dc *Context) DrawObject(o *Object, wg *sync.WaitGroup) {
 	defer wg.Done()
-
-	// Draw the outline if it exists
-	if o.Outline != nil && o.Outline.Thickness > 0 {
-		// Save the original context state to restore it later
-		originalShader := dc.Shader
-		originalCull := dc.Cull
-		originalWriteDepth := dc.WriteDepth
-        originalReadDepth := dc.ReadDepth
-		
-		// Configure the context for the outline pass
-		dc.Cull = CullFront     // Render the back-faces of the scaled model
-		dc.WriteDepth = false   // Don't let the outline write to the depth buffer
-		dc.ReadDepth = false 	// Disable depth testing for the outline
-
-		// Create a temporary shader for the outline pass
-		// It uses the same View-Projection matrix as the main shader
-		var viewProjectionMatrix Matrix
-		if p, ok := originalShader.(*PhongShader); ok {
-			viewProjectionMatrix = p.Matrix
-		} else if t, ok := originalShader.(*ToonShader); ok {
-			viewProjectionMatrix = t.Matrix
-		} else {
-			// Fallback or error if the shader type is unknown
-			viewProjectionMatrix = Identity()
-		}
-
-		scale := 1.0 + o.Outline.Thickness
-		scaleMatrix := Scale(V(scale, scale, scale))
-		outlineModelMatrix := o.Matrix.Mul(scaleMatrix)
-		outlineMVP := viewProjectionMatrix.Mul(outlineModelMatrix)
-		// Draw the scaled-up object (which renders as the outline)
-		
-		// Create and set the new SolidColorShader, passing the thickness to it.
-		dc.Shader = &SolidColorShader{Matrix: outlineMVP, Color: o.Outline.Color, Thickness: o.Outline.Thickness}
-		
-		dc.DrawTriangles(o)
-		dc.Shader = originalShader
-		dc.Cull = originalCull
-		dc.WriteDepth = originalWriteDepth
-		dc.ReadDepth = originalReadDepth
-	}
-
+	
+	// Temporarily update the shader's matrix to include the object's matrix
 	if p, ok := dc.Shader.(*PhongShader); ok {
 		originalMatrix := p.Matrix
 		p.Matrix = originalMatrix.Mul(o.Matrix)
@@ -497,6 +457,7 @@ func (dc *Context) DrawObject(o *Object, wg *sync.WaitGroup) {
 		dc.DrawLines(o)
 	}
 }
+
 
 
 

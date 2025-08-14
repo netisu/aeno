@@ -444,11 +444,13 @@ func (dc *Context) DrawObject(o *Object, wg *sync.WaitGroup) {
 		originalShader := dc.Shader
 		originalCull := dc.Cull
 		originalWriteDepth := dc.WriteDepth
+		originalDepthBias := dc.DepthBias
 
 		// Configure the context for the outline pass
 		dc.Cull = CullFront     // Render the back-faces of the scaled model
 		dc.WriteDepth = false   // Don't let the outline write to the depth buffer
-
+		dc.DepthBias = -0.01 	// Push the outline back slightly
+		
 		// Create a temporary shader for the outline pass
 		// It uses the same View-Projection matrix as the main shader
 		var viewProjectionMatrix Matrix
@@ -476,6 +478,8 @@ func (dc *Context) DrawObject(o *Object, wg *sync.WaitGroup) {
 		dc.Shader = originalShader
 		dc.Cull = originalCull
 		dc.WriteDepth = originalWriteDepth
+		dc.DepthBias = originalDepthBias
+
 	}
 
 	if p, ok := dc.Shader.(*PhongShader); ok {
@@ -496,6 +500,7 @@ func (dc *Context) DrawObject(o *Object, wg *sync.WaitGroup) {
 		dc.DrawLines(o)
 	}
 }
+
 
 
 

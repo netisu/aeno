@@ -93,7 +93,12 @@ func (s *Scene) FitObjectsToScene(eye, center, up Vector, fovy, aspect, near, fa
 func (s *Scene) Draw(fit bool, path string, objects []*Object) {
 	s.AddObjects(objects)
 	if fit {
-		s.Shader.Matrix = s.FitObjectsToScene(s.eye, s.center, s.up, s.fovy, s.aspect, 1, 999)
+		newMatrix := s.FitObjectsToScene(s.eye, s.center, s.up, s.fovy, s.aspect, 1, 999)
+		if p, ok := s.Shader.(*PhongShader); ok {
+			p.Matrix = newMatrix
+		} else if t, ok := s.Shader.(*ToonShader); ok {
+			t.Matrix = newMatrix
+		}
 	}
 	var wg sync.WaitGroup
 	wg.Add(len(s.Objects))
@@ -130,3 +135,4 @@ func GenerateSceneWithShader(fit bool, shader Shader, path string, objects []*Ob
 	scene := NewScene(eye, center, up, fovy, size, scale, shader)
 	scene.Draw(fit, path, objects)
 }
+

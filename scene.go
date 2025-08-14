@@ -122,4 +122,13 @@ func GenerateScene(fit bool, path string, objects []*Object, eye Vector, center 
 	scene := NewScene(eye, center, up, fovy, size, scale, light, ambient, diffuse, near, far)
 	scene.Draw(fit, path, objects)
 }
+func GenerateSceneWithShader(fit bool, shader Shader, path string, objects []*Object, eye Vector, center Vector, up Vector, fovy float64, size int, scale int, light Vector, ambient string, diffuse string, near, far float64) {
+	// Create a scene, but pass the user's shader directly to the context.
+	scene := NewScene(eye, center, up, fovy, size, scale, light, ambient, diffuse, near, far)
+	scene.Shader = shader
+	scene.Context.Shader = shader
+
+	// Draw the scene as usual.
+	scene.Draw(fit, path, objects)
+}
 

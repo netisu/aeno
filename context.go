@@ -470,7 +470,7 @@ func (dc *Context) DrawObject(o *Object, wg *sync.WaitGroup) {
 		// Draw the scaled-up object (which renders as the outline)
 		
 		// Restore the original context state for the main pass
-		dc.Shader = NewSolidColorShader(outlineMVP, o.Outline.Color)
+		dc.Shader = &SolidColorShader{Matrix: outlineMVP, Color: o.Outline.Color}
 		
 		dc.DrawTriangles(o)
 		dc.Shader = originalShader
@@ -496,6 +496,7 @@ func (dc *Context) DrawObject(o *Object, wg *sync.WaitGroup) {
 		dc.DrawLines(o)
 	}
 }
+
 
 
 

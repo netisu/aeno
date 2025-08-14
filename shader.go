@@ -6,8 +6,8 @@ import (
 
 // Shader shader interface
 type Shader interface {
-	Vertex(v Vertex, modelMatrix Matrix) Vertex
-	Fragment(v Vertex, fromObject *Object) Color
+	Vertex(Vertex) Vertex
+	Fragment(Vertex, *Object) Color
 }
 
 // PhongShader implements Phong shading with an optional texture.
@@ -89,8 +89,3 @@ func (shader *PhongShader) Fragment(v Vertex, fromObject *Object) Color {
 
 	return color.Mul(light).Min(White).Alpha(color.A)
 }
-
-
-
-
-

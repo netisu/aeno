@@ -449,7 +449,7 @@ func (dc *Context) DrawObject(o *Object, wg *sync.WaitGroup) {
 		// Configure the context for the outline pass
 		dc.Cull = CullFront     // Render the back-faces of the scaled model
 		dc.WriteDepth = false   // Don't let the outline write to the depth buffer
-		dc.DepthBias = -0.01 	// Push the outline back slightly
+		dc.DepthBias = 0.01 	// Push the outline forward slightly? idfk
 		
 		// Create a temporary shader for the outline pass
 		// It uses the same View-Projection matrix as the main shader
@@ -500,6 +500,7 @@ func (dc *Context) DrawObject(o *Object, wg *sync.WaitGroup) {
 		dc.DrawLines(o)
 	}
 }
+
 
 
 

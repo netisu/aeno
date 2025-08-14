@@ -470,7 +470,7 @@ func (dc *Context) DrawObject(o *Object, wg *sync.WaitGroup) {
 		// Draw the scaled-up object (which renders as the outline)
 		
 		// Create and set the new SolidColorShader, passing the thickness to it.
-		dc.Shader = &SolidColorShader(Matrix: outlineMVP, Color: o.Outline.Color, Thuckness: o.Outline.Thickness)
+		dc.Shader = &SolidColorShader{Matrix: outlineMVP, Color: o.Outline.Color, Thickness: o.Outline.Thickness}
 		
 		dc.DrawTriangles(o)
 		dc.Shader = originalShader
@@ -497,6 +497,7 @@ func (dc *Context) DrawObject(o *Object, wg *sync.WaitGroup) {
 		dc.DrawLines(o)
 	}
 }
+
 
 
 

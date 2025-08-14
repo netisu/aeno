@@ -7,7 +7,7 @@ type SolidColorShader struct {
 	Thickness float64
 }
 
-func NewSolidColorShader(matrix Matrix, color Color) *SolidColorShader {
+func NewSolidColorShader(matrix Matrix, color Color, thickness float64) *SolidColorShader {
 	return &SolidColorShader{matrix, color, thickness}
 }
 

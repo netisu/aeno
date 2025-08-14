@@ -6,7 +6,7 @@ import (
 
 // Shader shader interface
 type Shader interface {
-	Vertex(Vertex) Vertex
+	Vertex(v Vertex, modelMatrix Matrix) Vertex
 	Fragment(Vertex, *Object) Color
 }
 
@@ -35,7 +35,7 @@ func NewPhongShader(matrix Matrix, lightDirection, cameraPosition Vector, ambien
 		DiffuseColor:   diffuse,
 		SpecularColor:  specular,
 		SpecularPower:  0,
-		EnableOutline:  true,                
+		EnableOutline:  false,                
 		OutlineColor:   HexColor("000000"),  
 		OutlineFactor:  0.05,                
 	}
@@ -44,8 +44,6 @@ func NewPhongShader(matrix Matrix, lightDirection, cameraPosition Vector, ambien
 // Vertex f
 func (shader *PhongShader) Vertex(v Vertex) Vertex {
 	v.Output = shader.Matrix.MulPositionW(v.Position)
-	normalMatrix := shader.Matrix.Inverse().Transpose()
-	v.Normal = normalMatrix.MulDirection(v.Normal).Normalize()
 	return v
 }
 
@@ -91,6 +89,7 @@ func (shader *PhongShader) Fragment(v Vertex, fromObject *Object) Color {
 
 	return color.Mul(light).Min(White).Alpha(color.A)
 }
+
 
 
 

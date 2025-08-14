@@ -464,7 +464,7 @@ func (dc *Context) DrawObject(o *Object, wg *sync.WaitGroup) {
 		// Create a temporary object with a scaled model matrix
 		scale := 1.0 + o.Outline.Thickness
 		scaleMatrix := Scale(V(scale, scale, scale))
-		outlineObject.Matrix = o.Matrix.Mul(scaleMatrix)
+		outlineModelMatrix = o.Matrix.Mul(scaleMatrix)
 
 		outlineMVP := viewProjectionMatrix.Mul(outlineModelMatrix)
 		// Draw the scaled-up object (which renders as the outline)
@@ -496,6 +496,7 @@ func (dc *Context) DrawObject(o *Object, wg *sync.WaitGroup) {
 		dc.DrawLines(o)
 	}
 }
+
 
 
 

@@ -1,19 +1,17 @@
 package aeno
 
-import "github.com/go-gl/mathgl/mgl64"
-
+// SolidColorShader is a simple shader that renders everything in one color.
 type SolidColorShader struct {
-	Matrix Matrix // View-Projection matrix
+	Matrix Matrix
 	Color  Color
 }
 
-func (s *SolidColorShader) GetMatrix() Matrix {
-	return s.Matrix
+func NewSolidColorShader(matrix Matrix, color Color) *SolidColorShader {
+	return &SolidColorShader{matrix, color}
 }
 
-func (s *SolidColorShader) Vertex(v Vertex, modelMatrix mgl64.Mat4) Vertex {
-	mvp := s.Matrix.Mul(modelMatrix)
-	v.Output = mvp.MulPositionW(v.Position)
+func (s *SolidColorShader) Vertex(v Vertex) Vertex {
+	v.Output = s.Matrix.MulPositionW(v.Position)
 	return v
 }
 

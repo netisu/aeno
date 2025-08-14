@@ -8,7 +8,6 @@ import (
 type Shader interface {
 	Vertex(Vertex) Vertex
 	Fragment(Vertex, *Object) Color
-	GetMatrix() Matrix
 }
 
 // PhongShader implements Phong shading with an optional texture.
@@ -35,14 +34,9 @@ func (shader *PhongShader) GetMatrix() Matrix {
 }
 
 // Vertex f
-func (shader *PhongShader) Vertex(v Vertex, modelMatrix Matrix) Vertex {
-	// Combine the shader's VP matrix with the object's M matrix
-	mvp := shader.Matrix.Mul(modelMatrix)
-	v.Output = mvp.MulPositionW(v.Position)
+func (shader *PhongShader) Vertex(v Vertex) Vertex {
+	v.Output = shader.Matrix.MulPositionW(v.Position)
 
-	// Correctly transform the normal vector
-	normalMatrix := modelMatrix.Inverse().Transpose()
-	v.Normal = normalMatrix.MulDirection(v.Normal).Normalize()
 	return v
 }
 
@@ -80,3 +74,4 @@ func (shader *PhongShader) Fragment(v Vertex, fromObject *Object) Color {
 
 	return color.Mul(light).Min(White).Alpha(color.A)
 }
+

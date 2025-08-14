@@ -106,7 +106,7 @@ func (s *Scene) Draw(fit bool, path string, objects []*Object) {
 			log.Printf("Object attempted to render with nil mesh")
 			continue
 		}
-		go s.Context.DrawObject(o, &wg)
+		s.Context.DrawObject(o, &wg)
 	}
 	wg.Wait()
 	image := s.Context.Image()
@@ -122,3 +122,4 @@ func GenerateScene(fit bool, path string, objects []*Object, eye Vector, center 
 	scene := NewScene(eye, center, up, fovy, size, scale, light, ambient, diffuse, near, far)
 	scene.Draw(fit, path, objects)
 }
+

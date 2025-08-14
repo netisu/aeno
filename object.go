@@ -6,6 +6,11 @@ import (
 
 // Object struct for objects
 // objects can be passed to the renderer to be rendererd
+type Outline struct {
+    Thickness float64
+    Color     Color
+}
+
 type Object struct {
 	Mesh           *Mesh
 	Texture        Texture
@@ -76,3 +81,4 @@ func LoadObjectFromURL(url string) *Mesh {
 	}
 	return obj
 }
+

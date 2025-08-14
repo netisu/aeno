@@ -6,11 +6,6 @@ import (
 
 // Object struct for objects
 // objects can be passed to the renderer to be rendererd
-type Outline struct {
-    Thickness float64
-    Color     Color
-}
-
 type Object struct {
 	Mesh           *Mesh
 	Texture        Texture
@@ -18,7 +13,6 @@ type Object struct {
 	Matrix         Matrix
 	Tag            string
 	UseVertexColor bool
-	Outline        *Outline
 }
 
 // NewEmptyObject returns an empty object
@@ -81,4 +75,5 @@ func LoadObjectFromURL(url string) *Mesh {
 	}
 	return obj
 }
+
 

@@ -460,12 +460,3 @@ func (dc *Context) DrawObject(o *Object, wg *sync.WaitGroup) {
 
 
 
-
-
-
-
-
-
-
-
-

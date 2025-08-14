@@ -19,24 +19,31 @@ type PhongShader struct {
 	DiffuseColor   Color
 	SpecularColor  Color
 	SpecularPower  float64
+	EnableOutline  bool    // A switch to turn the effect on/off
+	OutlineColor   Color   // The color of the outline
+	OutlineFactor  float64 // Controls line thickness (lower is thicker)
 }
 
 // NewPhongShader f
 func NewPhongShader(matrix Matrix, lightDirection, cameraPosition Vector, ambient Color, diffuse Color) *PhongShader {
 	specular := Color{1, 1, 1, 1}
 	return &PhongShader{
-		matrix, lightDirection, cameraPosition,
-		ambient, diffuse, specular, 0}
-}
-
-func (shader *PhongShader) GetMatrix() Matrix {
-	return shader.Matrix
+		Matrix:         matrix,
+		LightDirection: lightDirection,
+		CameraPosition: cameraPosition,
+		AmbientColor:   ambient,
+		DiffuseColor:   diffuse,
+		SpecularColor:  specular,
+		SpecularPower:  0,
+		EnableOutline:  true,                
+		OutlineColor:   HexColor("000000"),  
+		OutlineFactor:  0.05,                
+	}
 }
 
 // Vertex f
 func (shader *PhongShader) Vertex(v Vertex) Vertex {
 	v.Output = shader.Matrix.MulPositionW(v.Position)
-
 	normalMatrix := shader.Matrix.Inverse().Transpose()
 	v.Normal = normalMatrix.MulDirection(v.Normal).Normalize()
 	return v
@@ -44,7 +51,15 @@ func (shader *PhongShader) Vertex(v Vertex) Vertex {
 
 // Fragment f
 func (shader *PhongShader) Fragment(v Vertex, fromObject *Object) Color {
+	if shader.EnableOutline {
+		viewDirection := shader.CameraPosition.Sub(v.Position).Normalize()
+		dot := viewDirection.Dot(v.Normal)
 
+		// If the surface normal is nearly perpendicular to the view direction, it's an edge.
+		if math.Abs(dot) < shader.OutlineFactor {
+			return shader.OutlineColor
+		}
+	}
 	// If the object is flagged to use vertex colors, we return the
 	// interpolated vertex color and skip all lighting and texturing.
 	if fromObject.UseVertexColor {
@@ -76,5 +91,6 @@ func (shader *PhongShader) Fragment(v Vertex, fromObject *Object) Color {
 
 	return color.Mul(light).Min(White).Alpha(color.A)
 }
+
 
 

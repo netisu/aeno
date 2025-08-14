@@ -37,6 +37,8 @@ func (shader *PhongShader) GetMatrix() Matrix {
 func (shader *PhongShader) Vertex(v Vertex) Vertex {
 	v.Output = shader.Matrix.MulPositionW(v.Position)
 
+	normalMatrix := shader.Matrix.Inverse().Transpose()
+	v.Normal = normalMatrix.MulDirection(v.Normal).Normalize()
 	return v
 }
 
@@ -74,4 +76,5 @@ func (shader *PhongShader) Fragment(v Vertex, fromObject *Object) Color {
 
 	return color.Mul(light).Min(White).Alpha(color.A)
 }
+
 

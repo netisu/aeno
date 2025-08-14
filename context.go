@@ -435,9 +435,43 @@ func (dc *Context) DrawTriangles(o *Object) {
 	wg.Wait()
 }
 
-// DrawObject draws the given object
 func (dc *Context) DrawObject(o *Object, wg *sync.WaitGroup) {
+	defer wg.Done()
+
+	// Draw the outline if it exists
+	if o.Outline != nil && o.Outline.Thickness > 0 {
+		// Save the original context state to restore it later
+		originalShader := dc.Shader
+		originalCull := dc.Cull
+		originalWriteDepth := dc.WriteDepth
+
+		// Configure the context for the outline pass
+		dc.Cull = CullFront     // Render the back-faces of the scaled model
+		dc.WriteDepth = false   // Don't let the outline write to the depth buffer
+
+		// Create a temporary shader for the outline pass
+		// It uses the same View-Projection matrix as the main shader
+		dc.Shader = &SolidColorShader{
+			Matrix: originalShader.GetMatrix(),
+			Color:  o.Outline.Color,
+		}
+
+		// Create a temporary object with a scaled model matrix
+		outlineObject := *o
+		scale := 1.0 + o.Outline.Thickness
+		scaleMatrix := Scale(V(scale, scale, scale))
+		outlineObject.Matrix = o.Matrix.Mul(scaleMatrix)
+
+		// Draw the scaled-up object (which renders as the outline)
+		dc.DrawTriangles(&outlineObject)
+
+		// Restore the original context state for the main pass
+		dc.Shader = originalShader
+		dc.Cull = originalCull
+		dc.WriteDepth = originalWriteDepth
+	}
+
 	dc.DrawTriangles(o)
 	dc.DrawLines(o)
-	wg.Done()
 }
+

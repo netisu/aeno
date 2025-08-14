@@ -451,27 +451,50 @@ func (dc *Context) DrawObject(o *Object, wg *sync.WaitGroup) {
 
 		// Create a temporary shader for the outline pass
 		// It uses the same View-Projection matrix as the main shader
-		dc.Shader = &SolidColorShader{
-			Matrix: originalShader.GetMatrix(),
-			Color:  o.Outline.Color,
+		var viewProjectionMatrix Matrix
+		if p, ok := originalShader.(*PhongShader); ok {
+			viewProjectionMatrix = p.Matrix
+		} else if t, ok := originalShader.(*ToonShader); ok {
+			viewProjectionMatrix = t.Matrix
+		} else {
+			// Fallback or error if the shader type is unknown
+			viewProjectionMatrix = Identity()
 		}
 
 		// Create a temporary object with a scaled model matrix
-		outlineObject := *o
 		scale := 1.0 + o.Outline.Thickness
 		scaleMatrix := Scale(V(scale, scale, scale))
 		outlineObject.Matrix = o.Matrix.Mul(scaleMatrix)
 
+		outlineMVP := viewProjectionMatrix.Mul(outlineModelMatrix)
 		// Draw the scaled-up object (which renders as the outline)
-		dc.DrawTriangles(&outlineObject)
-
+		
 		// Restore the original context state for the main pass
+		dc.Shader = NewSolidColorShader(outlineMVP, o.Outline.Color)
+		
+		dc.DrawTriangles(o)
 		dc.Shader = originalShader
 		dc.Cull = originalCull
 		dc.WriteDepth = originalWriteDepth
 	}
 
-	dc.DrawTriangles(o)
-	dc.DrawLines(o)
+	if p, ok := dc.Shader.(*PhongShader); ok {
+		originalMatrix := p.Matrix
+		p.Matrix = originalMatrix.Mul(o.Matrix)
+		dc.DrawTriangles(o)
+		dc.DrawLines(o)
+		p.Matrix = originalMatrix // Restore it for the next object
+	} else if t, ok := dc.Shader.(*ToonShader); ok {
+		originalMatrix := t.Matrix
+		t.Matrix = originalMatrix.Mul(o.Matrix)
+		dc.DrawTriangles(o)
+		dc.DrawLines(o)
+		t.Matrix = originalMatrix // Restore it
+	} else {
+		// If it's a shader we don't know how to get the matrix from, draw without matrix
+		dc.DrawTriangles(o)
+		dc.DrawLines(o)
+	}
 }
+
 

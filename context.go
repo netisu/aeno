@@ -444,11 +444,13 @@ func (dc *Context) DrawObject(o *Object, wg *sync.WaitGroup) {
 		originalShader := dc.Shader
 		originalCull := dc.Cull
 		originalWriteDepth := dc.WriteDepth
-
+        originalReadDepth := dc.ReadDepth
+		
 		// Configure the context for the outline pass
 		dc.Cull = CullFront     // Render the back-faces of the scaled model
 		dc.WriteDepth = false   // Don't let the outline write to the depth buffer
-		
+		dc.ReadDepth = false 	// Disable depth testing for the outline
+
 		// Create a temporary shader for the outline pass
 		// It uses the same View-Projection matrix as the main shader
 		var viewProjectionMatrix Matrix
@@ -461,16 +463,20 @@ func (dc *Context) DrawObject(o *Object, wg *sync.WaitGroup) {
 			viewProjectionMatrix = Identity()
 		}
 
-		outlineMVP := viewProjectionMatrix.Mul(o.Matrix)
+		scale := 1.0 + o.Outline.Thickness
+		scaleMatrix := Scale(V(scale, scale, scale))
+		outlineModelMatrix := o.Matrix.Mul(scaleMatrix)
+		outlineMVP := viewProjectionMatrix.Mul(outlineModelMatrix)
 		// Draw the scaled-up object (which renders as the outline)
 		
 		// Create and set the new SolidColorShader, passing the thickness to it.
-		dc.Shader = NewSolidColorShader(outlineMVP, o.Outline.Color, o.Outline.Thickness)
+		dc.Shader = &SolidColorShader(Matrix: outlineMVP, Color: o.Outline.Color, Thuckness: o.Outline.Thickness)
 		
 		dc.DrawTriangles(o)
 		dc.Shader = originalShader
 		dc.Cull = originalCull
 		dc.WriteDepth = originalWriteDepth
+		dc.ReadDepth = originalReadDepth
 	}
 
 	if p, ok := dc.Shader.(*PhongShader); ok {
@@ -491,6 +497,7 @@ func (dc *Context) DrawObject(o *Object, wg *sync.WaitGroup) {
 		dc.DrawLines(o)
 	}
 }
+
 
 
 

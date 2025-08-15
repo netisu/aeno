@@ -14,7 +14,7 @@ type ToonShader struct {
 	OutlineFactor  float64 
 }
 
-func NewToonShader(matrix Matrix, lightDir Vector) *ToonShader {
+func NewToonShader(matrix Matrix, lightDir, cameraPosition Vector) *ToonShader {
 	return &ToonShader{
 		Matrix:         matrix,
 		LightDirection: lightDir.Normalize(),

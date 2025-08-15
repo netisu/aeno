@@ -3,19 +3,22 @@ package aeno
 
 import "math"
 
-// ToonShader implements cel shading.
+// ToonShader implements cel shading with optional outlining.
 type ToonShader struct {
 	Matrix         Matrix
 	LightDirection Vector
-	// ColorSteps defines the brightness thresholds and corresponding colors.
-	// 0.8 might map to a bright color, 0.4 to a mid-tone, etc.
-	ColorSteps map[float64]Color 
+	CameraPosition Vector
+	ColorSteps     map[float64]Color
+	EnableOutline  bool    
+	OutlineColor   Color   
+	OutlineFactor  float64 
 }
 
 func NewToonShader(matrix Matrix, lightDir Vector) *ToonShader {
 	return &ToonShader{
 		Matrix:         matrix,
 		LightDirection: lightDir.Normalize(),
+		CameraPosition: cameraPosition,
 		ColorSteps: map[float64]Color{
 			// The key is the brightness threshold (dot product)
 			0.8: HexColor("ffffaa"), // Highlight
@@ -23,6 +26,9 @@ func NewToonShader(matrix Matrix, lightDir Vector) *ToonShader {
 			0.2: HexColor("a12c00"), // Shadow
 			0.0: HexColor("4d1100"), // Deep Shadow
 		},
+		EnableOutline: false, // Off by default
+		OutlineColor:  HexColor("000000"),
+		OutlineFactor: 0.05,
 	}
 }
 
@@ -34,6 +40,13 @@ func (s *ToonShader) Vertex(v Vertex) Vertex {
 }
 
 func (s *ToonShader) Fragment(v Vertex, fromObject *Object) Color {
+	if s.EnableOutline {
+		viewDirection := s.CameraPosition.Sub(v.Position).Normalize()
+		dot := viewDirection.Dot(v.Normal)
+		if math.Abs(dot) < s.OutlineFactor {
+			return s.OutlineColor
+		}
+	}
   intensity := math.Max(0, v.Normal.Dot(s.LightDirection))
 	// Determine the final color by snapping to the nearest step
 	var finalColor Color

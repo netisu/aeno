@@ -21,10 +21,10 @@ func NewToonShader(matrix Matrix, lightDir, cameraPosition Vector) *ToonShader {
 		CameraPosition: cameraPosition,
 		ColorSteps: map[float64]Color{
 			// The key is the brightness threshold (dot product)
-			0.8: HexColor("ffffaa"), // Highlight
-			0.5: HexColor("ff8844"), // Mid-tone
-			0.2: HexColor("a12c00"), // Shadow
-			0.0: HexColor("4d1100"), // Deep Shadow
+			0.95: HexColor("ffffff"), // Highlight
+			0.7: HexColor("cccccc"), // Mid-tone
+			0.4: HexColor("888888"), // Shadow
+			0.0: HexColor("444444"), // Deep Shadow
 		},
 		EnableOutline: false, // Off by default
 		OutlineColor:  HexColor("000000"),

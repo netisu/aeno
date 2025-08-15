@@ -47,38 +47,36 @@ func (s *ToonShader) Vertex(v Vertex) Vertex {
 }
 
 func (s *ToonShader) Fragment(v Vertex, fromObject *Object) Color {
-	// --- Get Base Color ---
+	// Get Base Color (Albedo)
 	albedo := fromObject.Color
 	if fromObject.Texture != nil {
 		texColor := fromObject.Texture.Sample(v.Texture.X, v.Texture.Y)
-		// Basic blending of texture over the base color
 		albedo = albedo.Lerp(texColor.DivScalar(texColor.A), texColor.A)
 	}
 
 	nDotL := math.Max(0, v.Normal.Dot(s.LightDirection))
-	// This math quantizes the smooth light gradient into hard bands
+	// Quantize the smooth light gradient into hard bands
 	diffuseIntensity := math.Round(nDotL/s.LightCutoff*s.ShadowBands) / s.ShadowBands
-	diffuseColor := albedo.MulScalar(diffuseIntensity)
+	litColor := albedo.MulScalar(diffuseIntensity) // Start with the object's color multiplied by the shadow band
 
+	// Specular Highlight
 	reflectedLight := s.LightDirection.Negate().Reflect(v.Normal)
 	vDotReflected := math.Max(0, s.CameraPosition.Sub(v.Position).Normalize().Dot(reflectedLight))
-	
 	specular := Color{} // Black by default
 	if vDotReflected > (1.0 - s.Glossiness) {
 		specular = s.SpecularColor
 	}
 
+	// Rim Light
 	viewDir := s.CameraPosition.Sub(v.Position).Normalize()
 	rimFactor := 1.0 - math.Max(0, viewDir.Dot(v.Normal))
-	
 	rim := Color{} // Black by default
 	if rimFactor > (1.0 - s.RimSize) {
 		rim = s.RimColor
 	}
-	
-	// Combine the lighting components
-	finalColor := diffuseColor.Add(specular).Add(rim)
 
-	// Ensure the final color isn't brighter than the original albedo + highlights
-	return finalColor.Min(albedo.Add(specular).Add(rim))
+	// Start with the base lit color, then add the other light effects on top.
+	finalColor := litColor.Add(specular).Add(rim)
+
+	return finalColor
 }

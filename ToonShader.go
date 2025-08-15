@@ -55,9 +55,7 @@ func (s *ToonShader) Fragment(v Vertex, fromObject *Object) Color {
 	}
 
 	nDotL := math.Max(0, v.Normal.Dot(s.LightDirection))
-	// Quantize the smooth light gradient into hard bands
-	diffuseIntensity := math.Round(nDotL/s.LightCutoff*s.ShadowBands) / s.ShadowBands
-	litColor := albedo.MulScalar(diffuseIntensity) // Start with the object's color multiplied by the shadow band
+	shadow := math.Round(nDotL/s.LightCutoff*s.ShadowBands) / s.ShadowBands
 
 	// Specular Highlight
 	reflectedLight := s.LightDirection.Negate().Reflect(v.Normal)
@@ -75,8 +73,8 @@ func (s *ToonShader) Fragment(v Vertex, fromObject *Object) Color {
 		rim = s.RimColor
 	}
 
-	// Start with the base lit color, then add the other light effects on top.
-	finalColor := litColor.Add(specular).Add(rim)
-
+	basePlusSpecular := albedo.Add(specular)
+	shadedColor := basePlusSpecular.MulScalar(shadow)
+	finalColor := shadedColor.Add(rim)
 	return finalColor
 }

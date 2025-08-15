@@ -51,16 +51,22 @@ func (s *ToonShader) Vertex(v Vertex) Vertex {
 }
 
 func (s *ToonShader) Fragment(v Vertex, fromObject *Object) Color {
-	// Get Base Color (Albedo)
-	albedo := fromObject.Color
+	light := s.AmbientColor
+	color := fromObject.Color
 	if fromObject.Texture != nil {
-		texColor := fromObject.Texture.Sample(v.Texture.X, v.Texture.Y)
-		albedo = albedo.Lerp(texColor.DivScalar(texColor.A), texColor.A)
+		sample := fromObject.Texture.Sample(v.Texture.X, v.Texture.Y)
+		if sample.A > 0 {
+			color = color.Lerp(sample.DivScalar(sample.A), sample.A)
+		}
 	}
 
 	nDotL := math.Max(0, v.Normal.Dot(s.LightDirection))
 	shadow := math.Round(nDotL/s.LightCutoff*s.ShadowBands) / s.ShadowBands
+	
+	// Add the diffuse light, but use our stepped "shadow" value.
+	light = light.Add(s.DiffuseColor.MulScalar(shadow))
+	
 
-	finalColor := s.AmbientColor.Add(s.DiffuseColor.Mul(albedo).MulScalar(shadow))
-	return finalColor
+	// The final color is the object's color multiplied by the calculated light.
+	return color.Mul(light).Min(White) // Using .Min(White) to prevent color blowout
 }

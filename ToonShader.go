@@ -1,4 +1,3 @@
-
 package aeno
 
 import "math"
@@ -62,27 +61,6 @@ func (s *ToonShader) Fragment(v Vertex, fromObject *Object) Color {
 	nDotL := math.Max(0, v.Normal.Dot(s.LightDirection))
 	shadow := math.Round(nDotL/s.LightCutoff*s.ShadowBands) / s.ShadowBands
 
-	// Specular Highlight
-	reflectedLight := s.LightDirection.Negate().Reflect(v.Normal)
-	vDotReflected := math.Max(0, s.CameraPosition.Sub(v.Position).Normalize().Dot(reflectedLight))
-	specular := Color{} // Black by default
-	if vDotReflected > (1.0 - s.Glossiness) {
-		specular = s.SpecularColor
-	}
-
-	// Rim Light
-	viewDir := s.CameraPosition.Sub(v.Position).Normalize()
-	rimFactor := 1.0 - math.Max(0, viewDir.Dot(v.Normal))
-	rim := Color{} // Black by default
-	if rimFactor > (1.0 - s.RimSize) {
-		rim = s.RimColor
-	}
-
-	light := s.AmbientColor
-	light = light.Add(s.DiffuseColor.MulScalar(shadow))
-	shadedColor := albedo.Mul(light)
-
-	// Add specular and rim light on top.
-	finalColor := shadedColor.Add(specular).Add(rim)
+	finalColor := s.AmbientColor.Add(s.DiffuseColor.Mul(albedo).MulScalar(shadow))
 	return finalColor
 }

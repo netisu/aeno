@@ -8,6 +8,9 @@ type ToonShader struct {
 	Matrix         Matrix
 	LightDirection Vector
 	CameraPosition Vector
+	AmbientColor   Color
+	DiffuseColor   Color
+	
 	// Cel Shading
 	LightCutoff float64 // The point at which the light transitions to full shadow (0-1)
 	ShadowBands float64 // The number of distinct shadow bands (e.g., 1, 2, 3)
@@ -21,11 +24,13 @@ type ToonShader struct {
 	RimSize  float64 // How much of the edge the rim light should cover (0-1)
 }
 
-func NewToonShader(matrix Matrix, lightDir, cameraPosition Vector) *ToonShader {
+func NewToonShader(matrix Matrix, lightDir, cameraPosition Vector, ambient, diffuse Color) *ToonShader {
 	return &ToonShader{
 		Matrix:         matrix,
 		LightDirection: lightDir.Normalize(),
 		CameraPosition: cameraPosition,
+		AmbientColor:   ambient,
+		DiffuseColor:   diffuse,
 		LightCutoff: 0.5,
 		ShadowBands: 2,
 
@@ -73,8 +78,11 @@ func (s *ToonShader) Fragment(v Vertex, fromObject *Object) Color {
 		rim = s.RimColor
 	}
 
-	basePlusSpecular := albedo.Add(specular)
-	shadedColor := basePlusSpecular.MulScalar(shadow)
-	finalColor := shadedColor.Add(rim)
+	light := s.AmbientColor
+	light = light.Add(s.DiffuseColor.MulScalar(shadow))
+	shadedColor := albedo.Mul(light)
+
+	// Add specular and rim light on top.
+	finalColor := shadedColor.Add(specular).Add(rim)
 	return finalColor
 }

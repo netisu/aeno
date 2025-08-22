@@ -73,8 +73,6 @@ type Context struct {
 
 // NewContext f
 func NewContext(width, height, superSample int, shader Shader) *Context {
-	width = width * superSample
-	height = height * superSample
 	dc := &Context{}
 	dc.Width = width
 	dc.Height = height
@@ -303,14 +301,16 @@ func (dc *Context) line(v0, v1 Vertex, s0, s1 Vector, fromObject *Object) {
 	s01 := s0.Sub(n)
 	s10 := s1.Add(n)
 	s11 := s1.Sub(n)
-	dc.rasterize(v1, v0, v0, s11, s01, s00, fromObject)
-	dc.rasterize(v1, v1, v0, s10, s11, s00, fromObject)
+	info1 := dc.rasterize(v1, v0, v0, s11, s01, s00, fromObject)
+	info2 := dc.rasterize(v1, v1, v0, s10, s11, s00, fromObject)
+	return info1.Add(info2)
 }
 
 func (dc *Context) wireframe(v0, v1, v2 Vertex, s0, s1, s2 Vector, fromObject *Object) {
-	dc.line(v0, v1, s0, s1, fromObject)
-	dc.line(v1, v2, s1, s2, fromObject)
-	dc.line(v2, v0, s2, s0, fromObject)
+	info1 := dc.line(v0, v1, s0, s1, fromObject)
+	info2 := dc.line(v1, v2, s1, s2, fromObject)
+	info3 := dc.line(v2, v0, s2, s0, fromObject)
+	return info1.Add(info2).Add(info3)
 }
 
 func (dc *Context) drawClippedLine(v0, v1 Vertex, fromObject *Object) {
@@ -323,7 +323,7 @@ func (dc *Context) drawClippedLine(v0, v1 Vertex, fromObject *Object) {
 	s1 := dc.screenMatrix.MulPosition(ndc1)
 
 	// rasterize
-	dc.line(v0, v1, s0, s1, fromObject)
+	return dc.line(v0, v1, s0, s1, fromObject)
 }
 
 func (dc *Context) drawClippedTriangle(v0, v1, v2 Vertex, fromObject *Object) {
@@ -355,10 +355,10 @@ func (dc *Context) drawClippedTriangle(v0, v1, v2 Vertex, fromObject *Object) {
 
 	// rasterize
 	if dc.Wireframe {
-		dc.wireframe(v0, v1, v2, s0, s1, s2, fromObject)
+		return dc.wireframe(v0, v1, v2, s0, s1, s2, fromObject)
+	} else {
+		return dc.rasterize(v0, v1, v2, s0, s1, s2, fromObject)
 	}
-
-	dc.rasterize(v0, v1, v2, s0, s1, s2, fromObject)
 }
 
 // DrawLine f
@@ -457,6 +457,7 @@ func (dc *Context) DrawObject(o *Object, wg *sync.WaitGroup) {
 		dc.DrawLines(o)
 	}
 }
+
 
 
 

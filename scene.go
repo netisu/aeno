@@ -171,4 +171,16 @@ func GenerateSceneWithShader(fit bool, shader Shader, path string, objects []*Ob
 	scene.Draw(fit, path, objects)
 }
 
+func GenerateSceneToWriter(writer io.Writer, objects []*Object, eye Vector, center Vector, up Vector, fovy float64, size int, scale int, light Vector, ambient string, diffuse string, near, far float64, fit bool) error {
+	aspect := float64(size) / float64(size)
+	matrix := LookAt(eye, center, up).Perspective(fovy, aspect, near, far)
+	
+	shader := NewPhongShader(matrix, light, eye, HexColor(ambient), HexColor(diffuse))
+	scene := NewScene(eye, center, up, fovy, size, scale, shader)
+
+	// Call the new core drawing method.
+	return scene.DrawToWriter(fit, writer, objects)
+}
+
+
 

@@ -120,19 +120,55 @@ func (s *Scene) Draw(fit bool, path string, objects []*Object) {
 	return
 }
 
-func GenerateScene(fit bool, path string, objects []*Object, eye Vector, center Vector, up Vector, fovy float64, size int, scale int, light Vector, ambient string, diffuse string, near, far float64) {
-	// Create the default shader
-	aspect := float64(size) / float64(size)
-	matrix := LookAt(eye, center, up).Perspective(fovy, aspect, near, far)
-	defaultShader := NewPhongShader(matrix, light, eye, HexColor(ambient), HexColor(diffuse))
+func (s *Scene) DrawToWriter(fit bool, writer io.Writer, objects []*Object) error {
+	s.AddObjects(objects)
+	if fit {
+		newMatrix := s.FitObjectsToScene(s.eye, s.center, s.up, s.fovy, s.aspect, 1, 999)
+		if p, ok := s.Shader.(*PhongShader); ok {
+			p.Matrix = newMatrix
+		} else if t, ok := s.Shader.(*ToonShader); ok {
+			t.Matrix = newMatrix
+		}
+	}
 
-	// Pass the created shader to the scene
-	scene := NewScene(eye, center, up, fovy, size, scale, defaultShader)
-	scene.Draw(fit, path, objects)
+	var wg sync.WaitGroup
+	wg.Add(len(s.Objects))
+	for _, o := range s.Objects {
+		if o.Mesh == nil {
+			log.Printf("Object attempted to render with nil mesh")
+			wg.Done()
+			continue
+		}
+		s.Context.DrawObject(o, &wg)
+	}
+	wg.Wait()
+
+	img := s.Context.Image()
+	if Dimentions > 0 { 
+		img = resize.Resize(uint(Dimentions), uint(Dimentions), img, resize.Bilinear)
+	}
+	
+	// Encode the final image directly to the provided writer.
+	return png.Encode(writer, img)
+}
+
+func GenerateScene(fit bool, path string, objects []*Object, eye Vector, center Vector, up Vector, fovy float64, size int, scale int, light Vector, ambient string, diffuse string, near, far float64) {
+	file, err := os.Create(path)
+	if err != nil {
+		log.Printf("aeno: could not create file for GenerateScene: %v", err)
+		return
+	}
+	defer file.Close()
+
+	err = GenerateSceneToWriter(file, objects, eye, center, up, fovy, size, scale, light, ambient, diffuse, near, far, fit)
+	if err != nil {
+		log.Printf("aeno: could not generate scene to file: %v", err)
+	}
 }
 func GenerateSceneWithShader(fit bool, shader Shader, path string, objects []*Object, eye Vector, center Vector, up Vector, fovy float64, size int, scale int) {
 	// Directly pass the provided shader to the scene
 	scene := NewScene(eye, center, up, fovy, size, scale, shader)
 	scene.Draw(fit, path, objects)
 }
+
 

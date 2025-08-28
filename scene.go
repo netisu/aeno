@@ -5,6 +5,8 @@ import (
 	"image/png"
 	"log"
 	"sync"
+	"io"
+	"os"
 
 	"github.com/nfnt/resize"
 )
@@ -144,9 +146,7 @@ func (s *Scene) DrawToWriter(fit bool, writer io.Writer, objects []*Object) erro
 	wg.Wait()
 
 	img := s.Context.Image()
-	if Dimentions > 0 { 
-		img = resize.Resize(uint(Dimentions), uint(Dimentions), img, resize.Bilinear)
-	}
+	img = resize.Resize(512, 512, img, resize.Bilinear)
 	
 	// Encode the final image directly to the provided writer.
 	return png.Encode(writer, img)
@@ -181,6 +181,7 @@ func GenerateSceneToWriter(writer io.Writer, objects []*Object, eye Vector, cent
 	// Call the new core drawing method.
 	return scene.DrawToWriter(fit, writer, objects)
 }
+
 
 
 

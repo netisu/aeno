@@ -59,22 +59,6 @@ func (m *Mesh) Add(b *Mesh) {
 	m.dirty()
 }
 
-// Clone f
-func (m *Mesh) Clone() *Mesh {
-	if m == nil {
-		return nil
-	}
-	newTriangles := make(*[]Triangle, len(m.Triangles))
-	// Copy the triangle data. This is important because Triangle is a struct,
-	// so this creates new copies of the triangles themselves. The V1, V2, V3 fields
-	// within the new triangles will still point to the original Vector objects.
-	copy(newTriangles, m.Triangles)
-
-	return &Mesh{
-		Triangles: newTriangles,
-	}
-}
-
 // Volume f
 func (m *Mesh) Volume() float64 {
 	var v float64
@@ -230,4 +214,5 @@ func (m *Mesh) Simplify(factor float64) {
 	m.dirty()
 
 }
+
 

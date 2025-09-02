@@ -119,7 +119,7 @@ func (s *Scene) Draw(fit bool, path string, objects []*Object) {
 	}
 	defer file.Close()
 
-	if err := png.Encode(file, s.Context); err != nil {
+	if err := png.Encode(file, s.Context.Image); err != nil {
 		log.Printf("aeno: could not encode png in Draw: %v", err)
 	}
 }
@@ -148,7 +148,7 @@ func (s *Scene) DrawToWriter(fit bool, writer io.Writer, objects []*Object) erro
 	wg.Wait()
 	
 	// Encode the final image directly to the provided writer.
-	return png.Encode(writer, s.Context)
+	return png.Encode(writer, s.Context.Image)
 }
 
 func GenerateScene(fit bool, path string, objects []*Object, eye Vector, center Vector, up Vector, fovy float64, size int, scale int, light Vector, ambient string, diffuse string, near, far float64) {
@@ -180,4 +180,5 @@ func GenerateSceneToWriter(writer io.Writer, objects []*Object, eye Vector, cent
 	// Call the new core drawing method.
 	return scene.DrawToWriter(fit, writer, objects)
 }
+
 

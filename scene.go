@@ -7,8 +7,6 @@ import (
 	"sync"
 	"io"
 	"os"
-
-	"github.com/nfnt/resize"
 )
 
 // Scene struct to store all data for a scene
@@ -114,9 +112,16 @@ func (s *Scene) Draw(fit bool, path string, objects []*Object) {
 	}
 	wg.Wait()
 
-	buf := new(bytes.Buffer)
-	png.Encode(buf, image)
-	SavePNG(path, image)
+	file, err := os.Create(path)
+	if err != nil {
+		log.Printf("aeno: could not create file in Draw: %v", err)
+		return
+	}
+	defer file.Close()
+
+	if err := png.Encode(file, s.Context); err != nil {
+		log.Printf("aeno: could not encode png in Draw: %v", err)
+	}
 	return
 }
 
@@ -144,7 +149,7 @@ func (s *Scene) DrawToWriter(fit bool, writer io.Writer, objects []*Object) erro
 	wg.Wait()
 	
 	// Encode the final image directly to the provided writer.
-	return png.Encode(writer, img)
+	return png.Encode(writer, s.Context)
 }
 
 func GenerateScene(fit bool, path string, objects []*Object, eye Vector, center Vector, up Vector, fovy float64, size int, scale int, light Vector, ambient string, diffuse string, near, far float64) {
@@ -176,8 +181,3 @@ func GenerateSceneToWriter(writer io.Writer, objects []*Object, eye Vector, cent
 	// Call the new core drawing method.
 	return scene.DrawToWriter(fit, writer, objects)
 }
-
-
-
-
-

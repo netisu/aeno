@@ -113,8 +113,6 @@ func (s *Scene) Draw(fit bool, path string, objects []*Object) {
 		s.Context.DrawObject(o, &wg)
 	}
 	wg.Wait()
-	image := s.Context.Image()
-	image = resize.Resize(512, 512, image, resize.Bilinear)
 
 	buf := new(bytes.Buffer)
 	png.Encode(buf, image)
@@ -144,9 +142,6 @@ func (s *Scene) DrawToWriter(fit bool, writer io.Writer, objects []*Object) erro
 		s.Context.DrawObject(o, &wg)
 	}
 	wg.Wait()
-
-	img := s.Context.Image()
-	img = resize.Resize(512, 512, img, resize.Bilinear)
 	
 	// Encode the final image directly to the provided writer.
 	return png.Encode(writer, img)
@@ -181,6 +176,7 @@ func GenerateSceneToWriter(writer io.Writer, objects []*Object, eye Vector, cent
 	// Call the new core drawing method.
 	return scene.DrawToWriter(fit, writer, objects)
 }
+
 
 
 

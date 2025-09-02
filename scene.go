@@ -122,7 +122,6 @@ func (s *Scene) Draw(fit bool, path string, objects []*Object) {
 	if err := png.Encode(file, s.Context); err != nil {
 		log.Printf("aeno: could not encode png in Draw: %v", err)
 	}
-	return
 }
 
 func (s *Scene) DrawToWriter(fit bool, writer io.Writer, objects []*Object) error {
@@ -181,3 +180,4 @@ func GenerateSceneToWriter(writer io.Writer, objects []*Object, eye Vector, cent
 	// Call the new core drawing method.
 	return scene.DrawToWriter(fit, writer, objects)
 }
+

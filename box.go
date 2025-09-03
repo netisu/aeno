@@ -48,6 +48,20 @@ func (a Box) Center() Vector {
 	return a.Anchor(Vector{0.5, 0.5, 0.5})
 }
 
+// Corners f
+func (b Box) Corners() []Vector {
+	return []Vector{
+		{b.Min.X, b.Min.Y, b.Min.Z},
+		{b.Max.X, b.Min.Y, b.Min.Z},
+		{b.Min.X, b.Max.Y, b.Min.Z},
+		{b.Min.X, b.Min.Y, b.Max.Z},
+		{b.Max.X, b.Max.Y, b.Min.Z},
+		{b.Max.X, b.Min.Y, b.Max.Z},
+		{b.Min.X, b.Max.Y, b.Max.Z},
+		{b.Max.X, b.Max.Y, b.Max.Z},
+	}
+}
+
 // Size f
 func (a Box) Size() Vector {
 	return a.Max.Sub(a.Min)
@@ -106,3 +120,4 @@ func (a Box) Intersection(b Box) Box {
 func (a Box) Transform(m Matrix) Box {
 	return m.MulBox(a)
 }
+

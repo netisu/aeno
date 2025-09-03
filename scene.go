@@ -37,55 +37,52 @@ func (s *Scene) AddObjects(objects []*Object) {
 
 // FitObjectsToScene fits the objects into a 0.5 unit bounding box
 func (s *Scene) FitObjectsToScene(eye, center, up Vector, fovy, aspect, near, far float64) (matrix Matrix) {
-	matrix = LookAt(eye, center, up).Perspective(fovy, aspect, near, far)
-	shader := NewPhongShader(matrix, Vector{}, eye, HexColor("000000"), HexColor("000000"))
-
-	allMesh := NewEmptyMesh()
 	var boxes []Box
 	for _, o := range s.Objects {
-		if o.Mesh == nil {
+		if o.Mesh != nil {
+			boxes = append(boxes, o.Mesh.BoundingBox())
+		}
+	}
+	
+	if len(boxes) == 0 {
+		// Default FOV of 60 degrees.
+		return LookAt(eye, center, up).Perspective(60, aspect, near, far)
+	}
+	sceneBox := BoxForBoxes(boxes)
+
+	viewMatrix := LookAt(eye, center, up)
+
+	var maxAngleX, maxAngleY float64
+	for _, corner := range sceneBox.Corners() {
+		p := viewMatrix.MulPosition(corner)
+
+		// The camera looks down the negative Z-axis in view space. We need the
+		// distance from the camera for the angle calculation.
+		// absZ is the depth of the point from the camera plane.
+		absZ := math.Abs(p.Z)
+		if absZ < 1e-6 { // Avoid division by zero for points at the camera's position.
 			continue
 		}
-		allMesh.Add(o.Mesh)
-		bb := o.Mesh.BoundingBox()
-		boxes = append(boxes, bb)
-	}
-	box := BoxForBoxes(boxes)
-	b := NewCubeForBox(box)
-	b.BiUnitCube()
-	allMesh.FitInside(b.BoundingBox(), V(0.5, 0.5, 0.5))
 
-	indexed := 0
-	var addedFOV float64
-	for _, o := range s.Objects {
-		if o.Mesh == nil {
-			continue
-		}
-		num := len(o.Mesh.Triangles)
-		tris := allMesh.Triangles[indexed : num+indexed]
-		allInside := false
-		for !allInside && len(tris) > 0 {
-			for _, t := range tris {
-				v1 := shader.Vertex(t.V1)
-				v2 := shader.Vertex(t.V2)
-				v3 := shader.Vertex(t.V3)
-
-				if v1.Outside() || v2.Outside() || v3.Outside() {
-					addedFOV += 5
-					matrix = LookAt(eye, center, up).Perspective(fovy+addedFOV, aspect, near, far)
-					shader.Matrix = matrix
-					allInside = false
-				} else {
-					allInside = true
-				}
-			}
+		angleX := math.Atan(math.Abs(p.X) / absZ)
+		if angleX > maxAngleX {
+			maxAngleX = angleX
 		}
 
-		o.Mesh = NewTriangleMesh(tris)
-		indexed += num
+		angleY := math.Atan(math.Abs(p.Y) / absZ)
+		if angleY > maxAngleY {
+			maxAngleY = angleY
+		}
 	}
 
-	return
+	fovyFromY := 2 * maxAngleY
+	fovyFromX := 2 * math.Atan(math.Tan(maxAngleX)/aspect)
+	finalFovyRad := math.Max(fovyFromX, fovyFromY)
+
+	// Convert to degrees and add a 5% padding to prevent objects from clipping.
+	finalFovyDeg := finalFovyRad * (180 / math.Pi) * 1.05
+
+	return viewMatrix.Perspective(finalFovyDeg, aspect, near, far)
 }
 
 // Draw draws the scene
@@ -179,3 +176,4 @@ func GenerateSceneToWriter(writer io.Writer, objects []*Object, eye Vector, cent
 	// Call the new core drawing method.
 	return scene.DrawToWriter(fit, writer, objects)
 }
+

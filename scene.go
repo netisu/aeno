@@ -6,7 +6,6 @@ import (
 	"sync"
 	"io"
 	"os"
-	"math"
 )
 
 // Scene struct to store all data for a scene
@@ -72,9 +71,9 @@ func (s *Scene) FitObjectsToScene(eye, center, up Vector, fovy, aspect, near, fa
 				continue
 			}
 			for _, t := range o.Mesh.Triangles {
-				v1 := shader.Vertex(t.V1)
-				v2 := shader.Vertex(t.V2)
-				v3 := shader.Vertex(t.V3)
+				v1 := shader.Vertex(t.V1.Position)
+				v2 := shader.Vertex(t.V2.Position)
+				v3 := shader.Vertex(t.V3.Position)
 
 				// The .Outside() method checks if the transformed vertex is outside the canonical view volume.
 				if v1.Outside() || v2.Outside() || v3.Outside() {
@@ -192,6 +191,7 @@ func GenerateSceneToWriter(writer io.Writer, objects []*Object, eye Vector, cent
 	// Call the new core drawing method.
 	return scene.DrawToWriter(fit, writer, objects)
 }
+
 
 
 

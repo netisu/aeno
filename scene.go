@@ -35,57 +35,31 @@ func (s *Scene) AddObjects(objects []*Object) {
 	}
 }
 
-// FitObjectsToScene fits the objects into a 0.5 unit bounding box
-func (s *Scene) FitObjectsToScene(eye, center, up Vector, fovy, aspect, near, far float64) (matrix Matrix) {
-	matrix = LookAt(eye, center, up).Perspective(fovy, aspect, near, far)
-	shader := NewPhongShader(matrix, Vector{}, eye, HexColor("000000"), HexColor("000000"))
-
-	allMesh := NewEmptyMesh()
+// RENAME and REFACTOR FitObjectsToScene. Its new job is to CALCULATE, not MODIFY.
+func (s *Scene) CalculateFitMatrix(eye, center, up Vector, fovy, aspect, near, far float64) (matrix Matrix) {
 	var boxes []Box
 	for _, o := range s.Objects {
 		if o.Mesh == nil {
 			continue
 		}
-		allMesh.Add(o.Mesh)
-		bb := o.Mesh.BoundingBox()
-		boxes = append(boxes, bb)
-	}
-	box := BoxForBoxes(boxes)
-	b := NewCubeForBox(box)
-	b.BiUnitCube()
-	allMesh.FitInside(b.BoundingBox(), V(0.5, 0.5, 0.5))
-
-	indexed := 0
-	var addedFOV float64
-	for _, o := range s.Objects {
-		if o.Mesh == nil {
-			continue
-		}
-		num := len(o.Mesh.Triangles)
-		tris := allMesh.Triangles[indexed : num+indexed]
-		allInside := false
-		for !allInside && len(tris) > 0 {
-			for _, t := range tris {
-				v1 := shader.Vertex(t.V1)
-				v2 := shader.Vertex(t.V2)
-				v3 := shader.Vertex(t.V3)
-
-				if v1.Outside() || v2.Outside() || v3.Outside() {
-					addedFOV += 5
-					matrix = LookAt(eye, center, up).Perspective(fovy+addedFOV, aspect, near, far)
-					shader.Matrix = matrix
-					allInside = false
-				} else {
-					allInside = true
-				}
-			}
-		}
-
-		o.Mesh = NewTriangleMesh(tris)
-		indexed += num
+		boxes = append(boxes, o.Mesh.BoundingBox().Transform(o.Matrix))
 	}
 
-	return
+	if len(boxes) == 0 {
+		return Identity()
+	}
+	
+	sceneBox := BoxForBoxes(boxes)
+	size := sceneBox.Size()
+	scale := 2.0 / math.Max(size.X, math.Max(size.Y, size.Z))
+
+	// Get the center of the scene.
+	center := sceneBox.Center()
+
+	translateMatrix := Translate(center.MulScalar(-1))
+	scaleMatrix := Scale(V(scale, scale, scale))
+
+	return scaleMatrix.Multiply(translateMatrix)
 }
 
 // Draw draws the scene
@@ -179,3 +153,4 @@ func GenerateSceneToWriter(writer io.Writer, objects []*Object, eye Vector, cent
 	// Call the new core drawing method.
 	return scene.DrawToWriter(fit, writer, objects)
 }
+

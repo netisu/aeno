@@ -54,9 +54,16 @@ func (s *Scene) FitObjectsToScene(eye, center, up Vector, fovy, aspect, near, fa
 	viewMatrix := LookAt(eye, center, up)
 
 	var maxAngleX, maxAngleY float64
+	var minZ, maxZ float64
 	for _, corner := range sceneBox.Corners() {
 		p := viewMatrix.MulPosition(corner)
-
+		if first {
+			minZ, maxZ = p.Z, p.Z
+			first = false
+		} else {
+			minZ = math.Min(minZ, p.Z)
+			maxZ = math.Max(maxZ, p.Z)
+		}
 		// The camera looks down the negative Z-axis in view space. We need the
 		// distance from the camera for the angle calculation.
 		// absZ is the depth of the point from the camera plane.
@@ -75,7 +82,17 @@ func (s *Scene) FitObjectsToScene(eye, center, up Vector, fovy, aspect, near, fa
 			maxAngleY = angleY
 		}
 	}
+	
+	dynamicNear := -maxZ
+	dynamicFar := -minZ
 
+	dynamicNear *= 0.9
+	dynamicFar *= 1.1
+
+	if dynamicNear < 0.1 {
+		dynamicNear = 0.1
+	}
+	
 	fovyFromY := 2 * maxAngleY
 	fovyFromX := 2 * math.Atan(math.Tan(maxAngleX)/aspect)
 	finalFovyRad := math.Max(fovyFromX, fovyFromY)
@@ -177,5 +194,6 @@ func GenerateSceneToWriter(writer io.Writer, objects []*Object, eye Vector, cent
 	// Call the new core drawing method.
 	return scene.DrawToWriter(fit, writer, objects)
 }
+
 
 

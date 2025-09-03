@@ -55,6 +55,7 @@ func (s *Scene) FitObjectsToScene(eye, center, up Vector, fovy, aspect, near, fa
 
 	var maxAngleX, maxAngleY float64
 	var minZ, maxZ float64
+	first := true
 	for _, corner := range sceneBox.Corners() {
 		p := viewMatrix.MulPosition(corner)
 		if first {
@@ -194,6 +195,7 @@ func GenerateSceneToWriter(writer io.Writer, objects []*Object, eye Vector, cent
 	// Call the new core drawing method.
 	return scene.DrawToWriter(fit, writer, objects)
 }
+
 
 
 

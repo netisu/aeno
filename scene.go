@@ -36,72 +36,69 @@ func (s *Scene) AddObjects(objects []*Object) {
 	}
 }
 
+// A helper function to update the matrix in a shader if the shader supports it.
+func updateShaderMatrix(shader Shader, matrix Matrix) {
+	if s, ok := shader.(interface{ SetMatrix(Matrix) }); ok {
+		s.SetMatrix(matrix)
+	} else if p, ok := shader.(*PhongShader); ok { // Fallback for specific known types
+		p.Matrix = matrix
+	} else if t, ok := shader.(*ToonShader); ok {
+		t.Matrix = matrix
+	}
+}
+
 // FitObjectsToScene fits the objects into a 0.5 unit bounding box
 func (s *Scene) FitObjectsToScene(eye, center, up Vector, fovy, aspect, near, far float64) (matrix Matrix) {
-	var boxes []Box
-	for _, o := range s.Objects {
-		if o.Mesh != nil {
-			boxes = append(boxes, o.Mesh.BoundingBox())
+	currentFovy := fovy
+
+	tempMatrix := LookAt(eye, center, up).Perspective(currentFovy, aspect, near, far)
+	shader, ok := s.Shader.(interface {
+		Vertex(Vector) Vertex
+		SetMatrix(Matrix)
+	})
+	if !ok {
+		log.Println("aeno: Shader does not support Vertex() or SetMatrix() for fitting, using default matrix.")
+		return tempMatrix
+	}
+	shader.SetMatrix(tempMatrix)
+
+	for { // Loop indefinitely until we find a FOV that contains all geometry
+		allInside := true
+		matrix = LookAt(eye, center, up).Perspective(currentFovy, aspect, near, far)
+		shader.SetMatrix(matrix)
+
+		for _, o := range s.Objects {
+			if o.Mesh == nil {
+				continue
+			}
+			for _, t := range o.Mesh.Triangles {
+				v1 := shader.Vertex(t.V1)
+				v2 := shader.Vertex(t.V2)
+				v3 := shader.Vertex(t.V3)
+
+				// The .Outside() method checks if the transformed vertex is outside the canonical view volume.
+				if v1.Outside() || v2.Outside() || v3.Outside() {
+					allInside = false
+					break 
+				}
+			}
+			if !allInside {
+				break
+			}
+		}
+
+		if allInside {
+			return matrix
+		}
+
+		// If we're here, at least one vertex was outside. Increase the FOV and try again.
+		currentFovy += 2.0
+		if currentFovy >= 175 {
+			// Add a safety break to prevent an infinite loop in case of extreme geometric configurations.
+			log.Println("aeno: FitObjectsToScene FOV reached 175 degrees, returning current best-fit matrix.")
+			return matrix
 		}
 	}
-	
-	if len(boxes) == 0 {
-		// Default FOV of 60 degrees.
-		return LookAt(eye, center, up).Perspective(60, aspect, near, far)
-	}
-	sceneBox := BoxForBoxes(boxes)
-
-	viewMatrix := LookAt(eye, center, up)
-
-	var maxAngleX, maxAngleY float64
-	var minZ, maxZ float64
-	first := true
-	for _, corner := range sceneBox.Corners() {
-		p := viewMatrix.MulPosition(corner)
-		if first {
-			minZ, maxZ = p.Z, p.Z
-			first = false
-		} else {
-			minZ = math.Min(minZ, p.Z)
-			maxZ = math.Max(maxZ, p.Z)
-		}
-		// The camera looks down the negative Z-axis in view space. We need the
-		// distance from the camera for the angle calculation.
-		// absZ is the depth of the point from the camera plane.
-		absZ := math.Abs(p.Z)
-		if absZ < 1e-6 { // Avoid division by zero for points at the camera's position.
-			continue
-		}
-
-		angleX := math.Atan(math.Abs(p.X) / absZ)
-		if angleX > maxAngleX {
-			maxAngleX = angleX
-		}
-
-		angleY := math.Atan(math.Abs(p.Y) / absZ)
-		if angleY > maxAngleY {
-			maxAngleY = angleY
-		}
-	}
-	
-	dynamicNear := -maxZ
-	dynamicFar := -minZ
-
-	dynamicNear *= 0.9
-	dynamicFar *= 1.1
-
-	if dynamicNear < 0.1 {
-		dynamicNear = 0.1
-	}
-	
-	fovyFromY := 2 * maxAngleY
-	fovyFromX := 2 * math.Atan(math.Tan(maxAngleX)/aspect)
-	finalFovyRad := math.Max(fovyFromX, fovyFromY)
-
-	// Convert to degrees and add a 5% padding to prevent objects from clipping.
-	finalFovyDeg := finalFovyRad * (180 / math.Pi) * 1.05
-
-	return viewMatrix.Perspective(finalFovyDeg, aspect, near, far)
 }
 
 // Draw draws the scene
@@ -195,6 +192,7 @@ func GenerateSceneToWriter(writer io.Writer, objects []*Object, eye Vector, cent
 	// Call the new core drawing method.
 	return scene.DrawToWriter(fit, writer, objects)
 }
+
 
 
 

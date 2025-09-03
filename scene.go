@@ -48,43 +48,55 @@ func updateShaderMatrix(shader Shader, matrix Matrix) {
 
 // FitObjectsToScene fits the objects into a 0.5 unit bounding box
 func (s *Scene) FitObjectsToScene(eye, center, up Vector, fovy, aspect, near, far float64) (matrix Matrix) {
-	currentFovy := fovy
-	for { // Loop indefinitely until we find a FOV that contains all geometry
-		allInside := true
-		matrix = LookAt(eye, center, up).Perspective(currentFovy, aspect, near, far)
+	matrix = LookAt(eye, center, up).Perspective(fovy, aspect, near, far)
+	shader := NewPhongShader(matrix, Vector{}, eye, HexColor("000000"), HexColor("000000"))
 
-		for _, o := range s.Objects {
-			if o.Mesh == nil {
-				continue
-			}
-			for _, t := range o.Mesh.Triangles {
-				v1 := Vertex{Output: matrix.MulPositionW(t.V1.Position)}
-				v2 := Vertex{Output: matrix.MulPositionW(t.V2.Position)}
-				v3 := Vertex{Output: matrix.MulPositionW(t.V3.Position)}
+	allMesh := NewEmptyMesh()
+	var boxes []Box
+	for _, o := range s.Objects {
+		if o.Mesh == nil {
+			continue
+		}
+		allMesh.Add(o.Mesh)
+		bb := o.Mesh.BoundingBox()
+		boxes = append(boxes, bb)
+	}
+	box := BoxForBoxes(boxes)
+	b := NewCubeForBox(box)
+	b.BiUnitCube()
+	allMesh.FitInside(b.BoundingBox(), V(0.1, 0.1, 0.1))
 
-				// The .Outside() method checks if the transformed vertex is outside the canonical view volume.
+	indexed := 0
+	var addedFOV float64
+	for _, o := range s.Objects {
+		if o.Mesh == nil {
+			continue
+		}
+		num := len(o.Mesh.Triangles)
+		tris := allMesh.Triangles[indexed : num+indexed]
+		allInside := false
+		for !allInside && len(tris) > 0 {
+			for _, t := range tris {
+				v1 := shader.Vertex(t.V1)
+				v2 := shader.Vertex(t.V2)
+				v3 := shader.Vertex(t.V3)
+
 				if v1.Outside() || v2.Outside() || v3.Outside() {
+					addedFOV += 5
+					matrix = LookAt(eye, center, up).Perspective(fovy+addedFOV, aspect, near, far)
+					shader.Matrix = matrix
 					allInside = false
-					break 
+				} else {
+					allInside = true
 				}
 			}
-			if !allInside {
-				break
-			}
 		}
 
-		if allInside {
-			return matrix
-		}
-
-		// If we're here, at least one vertex was outside. Increase the FOV and try again.
-		currentFovy += 2.0
-		if currentFovy >= 175 {
-			// Add a safety break to prevent an infinite loop in case of extreme geometric configurations.
-			log.Println("aeno: FitObjectsToScene FOV reached 175 degrees, returning current best-fit matrix.")
-			return matrix
-		}
+		o.Mesh = NewTriangleMesh(tris)
+		indexed += num
 	}
+
+	return
 }
 
 // Draw draws the scene
@@ -178,6 +190,7 @@ func GenerateSceneToWriter(writer io.Writer, objects []*Object, eye Vector, cent
 	// Call the new core drawing method.
 	return scene.DrawToWriter(fit, writer, objects)
 }
+
 
 
 

@@ -49,22 +49,9 @@ func updateShaderMatrix(shader Shader, matrix Matrix) {
 // FitObjectsToScene fits the objects into a 0.5 unit bounding box
 func (s *Scene) FitObjectsToScene(eye, center, up Vector, fovy, aspect, near, far float64) (matrix Matrix) {
 	currentFovy := fovy
-
-	tempMatrix := LookAt(eye, center, up).Perspective(currentFovy, aspect, near, far)
-	shader, ok := s.Shader.(interface {
-		Vertex(Vector) Vertex
-		SetMatrix(Matrix)
-	})
-	if !ok {
-		log.Println("aeno: Shader does not support Vertex() or SetMatrix() for fitting, using default matrix.")
-		return tempMatrix
-	}
-	shader.SetMatrix(tempMatrix)
-
 	for { // Loop indefinitely until we find a FOV that contains all geometry
 		allInside := true
 		matrix = LookAt(eye, center, up).Perspective(currentFovy, aspect, near, far)
-		shader.SetMatrix(matrix)
 
 		for _, o := range s.Objects {
 			if o.Mesh == nil {
@@ -191,6 +178,7 @@ func GenerateSceneToWriter(writer io.Writer, objects []*Object, eye Vector, cent
 	// Call the new core drawing method.
 	return scene.DrawToWriter(fit, writer, objects)
 }
+
 
 
 

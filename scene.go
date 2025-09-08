@@ -64,7 +64,7 @@ func (s *Scene) FitObjectsToScene(eye, center, up Vector, fovy, aspect, near, fa
 	box := BoxForBoxes(boxes)
 	b := NewCubeForBox(box)
 	b.BiUnitCube()
-	allMesh.FitInside(b.BoundingBox(), V(0.1, 0.1, 0.1))
+	allMesh.FitInside(b.BoundingBox(), V(-0.2, -0.2, -0.2))
 
 	indexed := 0
 	var addedFOV float64
@@ -190,6 +190,7 @@ func GenerateSceneToWriter(writer io.Writer, objects []*Object, eye Vector, cent
 	// Call the new core drawing method.
 	return scene.DrawToWriter(fit, writer, objects)
 }
+
 
 
 

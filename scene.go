@@ -64,7 +64,7 @@ func (s *Scene) FitObjectsToScene(eye, center, up Vector, fovy, aspect, near, fa
 	box := BoxForBoxes(boxes)
 	b := NewCubeForBox(box)
 	b.BiUnitCube()
-	// allMesh.FitInside(b.BoundingBox(), V(0.5, 0.5, 0.5))
+	allMesh.FitInside(b.BoundingBox(), V(0.5, 0.5, 0.5))
 
 	indexed := 0
 	var addedFOV float64
@@ -74,7 +74,7 @@ func (s *Scene) FitObjectsToScene(eye, center, up Vector, fovy, aspect, near, fa
 		}
 		num := len(o.Mesh.Triangles)
 		tris := allMesh.Triangles[indexed : num+indexed]
-		allInside := true
+		allInside := false
 		for !allInside && len(tris) > 0 {
 			for _, t := range tris {
 				v1 := shader.Vertex(t.V1)
@@ -190,6 +190,7 @@ func GenerateSceneToWriter(writer io.Writer, objects []*Object, eye Vector, cent
 	// Call the new core drawing method.
 	return scene.DrawToWriter(fit, writer, objects)
 }
+
 
 
 

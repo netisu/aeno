@@ -110,17 +110,14 @@ func (s *Scene) Draw(fit bool, path string, objects []*Object) {
 			t.Matrix = newMatrix
 		}
 	}
-	var wg sync.WaitGroup
-	wg.Add(len(s.Objects))
 	for _, o := range s.Objects {
 		if o.Mesh == nil {
-			wg.Done()
 			log.Printf("Object attempted to render with nil mesh")
 			continue
 		}
 		s.Context.DrawObject(o, &wg)
 	}
-	wg.Wait()
+
 
 	file, err := os.Create(path)
 	if err != nil {
@@ -145,17 +142,13 @@ func (s *Scene) DrawToWriter(fit bool, writer io.Writer, objects []*Object) erro
 		}
 	}
 
-	var wg sync.WaitGroup
-	wg.Add(len(s.Objects))
 	for _, o := range s.Objects {
 		if o.Mesh == nil {
 			log.Printf("Object attempted to render with nil mesh")
-			wg.Done()
 			continue
 		}
 		s.Context.DrawObject(o, &wg)
 	}
-	wg.Wait()
 	
 	// Encode the final image directly to the provided writer.
 	return png.Encode(writer, s.Context.Image())
@@ -190,6 +183,7 @@ func GenerateSceneToWriter(writer io.Writer, objects []*Object, eye Vector, cent
 	// Call the new core drawing method.
 	return scene.DrawToWriter(fit, writer, objects)
 }
+
 
 
 

@@ -436,9 +436,7 @@ func (dc *Context) DrawTriangles(o *Object) {
 	wg.Wait()
 }
 
-func (dc *Context) DrawObject(o *Object, wg *sync.WaitGroup) {
-	defer wg.Done()
-	
+func (dc *Context) DrawObject(o *Object) {
 	// Temporarily update the shader's matrix to include the object's matrix
 	if p, ok := dc.Shader.(*PhongShader); ok {
 		originalMatrix := p.Matrix
@@ -458,7 +456,3 @@ func (dc *Context) DrawObject(o *Object, wg *sync.WaitGroup) {
 		dc.DrawLines(o)
 	}
 }
-
-
-
-

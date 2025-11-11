@@ -3,7 +3,6 @@ package aeno
 import (
 	"image/png"
 	"log"
-	"sync"
 	"io"
 	"os"
 )
@@ -115,7 +114,7 @@ func (s *Scene) Draw(fit bool, path string, objects []*Object) {
 			log.Printf("Object attempted to render with nil mesh")
 			continue
 		}
-		s.Context.DrawObject(o, &wg)
+		s.Context.DrawObject(o)
 	}
 
 
@@ -147,7 +146,7 @@ func (s *Scene) DrawToWriter(fit bool, writer io.Writer, objects []*Object) erro
 			log.Printf("Object attempted to render with nil mesh")
 			continue
 		}
-		s.Context.DrawObject(o, &wg)
+		s.Context.DrawObject(o)
 	}
 	
 	// Encode the final image directly to the provided writer.
@@ -183,17 +182,3 @@ func GenerateSceneToWriter(writer io.Writer, objects []*Object, eye Vector, cent
 	// Call the new core drawing method.
 	return scene.DrawToWriter(fit, writer, objects)
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-

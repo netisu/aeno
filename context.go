@@ -326,7 +326,7 @@ func (dc *Context) drawClippedLine(v0, v1 Vertex, fromObject *Object) {
 	dc.line(v0, v1, s0, s1, fromObject)
 }
 
-func (dc *Context) drawClippedTriangle(v0, v1, v2 Vertex) RasterizeInfo {
+func (dc *Context) drawClippedTriangle(v0, v1, v2 Vertex, fromObject *Object) {
 	// normalized device coordinates
 	ndc0 := v0.Output.DivScalar(v0.Output.W).Vector()
 	ndc1 := v1.Output.DivScalar(v1.Output.W).Vector()
@@ -336,7 +336,7 @@ func (dc *Context) drawClippedTriangle(v0, v1, v2 Vertex) RasterizeInfo {
 	a := (ndc1.X-ndc0.X)*(ndc2.Y-ndc0.Y) - (ndc2.X-ndc0.X)*(ndc1.Y-ndc0.Y)
 	if a < 0 {
 		v0, v1, v2 = v2, v1, v0
-		ndc0, ndc1, ndc2 = ndc2, ndc1, ndc0
+        ndc0, ndc1, ndc2 = ndc2, ndc1, ndc0
 	}
 	if dc.Cull == CullFront {
 		a = -a
@@ -345,7 +345,7 @@ func (dc *Context) drawClippedTriangle(v0, v1, v2 Vertex) RasterizeInfo {
 		a = -a
 	}
 	if dc.Cull != CullNone && a <= 0 {
-		return RasterizeInfo{}
+		return
 	}
 
 	// screen coordinates
@@ -355,11 +355,12 @@ func (dc *Context) drawClippedTriangle(v0, v1, v2 Vertex) RasterizeInfo {
 
 	// rasterize
 	if dc.Wireframe {
-		return dc.wireframe(v0, v1, v2, s0, s1, s2)
-	} else {
-		return dc.rasterize(v0, v1, v2, s0, s1, s2)
+		dc.wireframe(v0, v1, v2, s0, s1, s2, fromObject)
 	}
+
+	dc.rasterize(v0, v1, v2, s0, s1, s2, fromObject)
 }
+
 
 // DrawLine f
 func (dc *Context) DrawLine(t *Line, fromObject *Object) {
@@ -457,6 +458,7 @@ func (dc *Context) DrawObject(o *Object, wg *sync.WaitGroup) {
 		dc.DrawLines(o)
 	}
 }
+
 
 
 

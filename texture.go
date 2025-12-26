@@ -40,6 +40,9 @@ type ImageTexture struct {
 
 // NewImageTexture image.Image to texture
 func NewImageTexture(im image.Image) Texture {
+	if im == nil {
+		return nil
+	}
 	size := im.Bounds().Max
 	return &ImageTexture{size.X, size.Y, im}
 }
@@ -62,13 +65,25 @@ func LoadTexture(path string) (Texture) {
 	return tex
 }
 
-func LoadTextureFromURL(url string) (Texture) {
+func LoadTextureFromURL(url string) Texture {
 	resp, err := http.Get(url)
 	if err != nil {
-		panic(err)
+		// Network error (DNS, timeout, etc)
+		return nil 
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		// File not found or server error (e.g. 403, 404, 500)
+		return nil
+	}
+
 	im, _, err := image.Decode(resp.Body)
+	if err != nil {
+		// Not a valid image format
+		return nil
+	}
+
 	return NewImageTexture(im)
 }
 
@@ -94,4 +109,5 @@ func (t *ImageTexture) BilinearSample(u, v float64) Color {
 	c = c.Add(c01.MulScalar((1 - x) * y))
 	c = c.Add(c11.MulScalar(x * y))
 	return c
+
 }

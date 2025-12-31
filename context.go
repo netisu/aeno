@@ -2,7 +2,6 @@ package aeno
 
 import (
 	"image"
-	"image/color"
 	"math"
 	"runtime"
 	"sync"

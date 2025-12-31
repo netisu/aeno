@@ -3,7 +3,6 @@ package aeno
 import (
 	"image/png"
 	"io"
-	"math"
 	"os"
 )
 
@@ -76,8 +75,8 @@ func (s *Scene) FitObjectsToScene(fovy, aspect, near, far float64) {
 
 	// Update the Scene and Shader with the final working parameters
 	finalFOV := fovy + addedFOV
-	s.Shader.Matrix = LookAt(s.Eye, s.Center, s.Up).Perspective(finalFOV, aspect, near, far)
-	s.Shader.CameraPosition = s.Eye
+	shader.Matrix = LookAt(s.Eye, s.Center, s.Up).Perspective(finalFOV, aspect, near, far)
+	shader.CameraPosition = s.Eye
 }
 
 func (s *Scene) GetSafetyClipping() (near, far float64) {
@@ -123,25 +122,29 @@ func (s *Scene) Save(path string) error {
 }
 
 // GenerateScene is a high-level helper
-func GenerateScene(path string, objects []*Object, width, height int, fitCamera bool) {
-	// Default light and material
-	light := Vector{0.5, 0.5, 1}
-	color := HexColor("#FFF")
-	
-	// Initial camera (will be moved if fitCamera is true)
-	eye := Vector{2, 2, 2}
-	center := Vector{0, 0, 0}
-	up := Vector{0, 0, 1}
+func GenerateScene(fit bool, path string, objects []*Object, eye Vector, center Vector, up Vector, fovy float64, size int, scale int, light Vector, ambient string, diffuse string, near, far float64) {
+	file, err := os.Create(path)
+	if err != nil {
+		log.Printf("aeno: could not create file for GenerateScene: %v", err)
+		return
+	}
+	defer file.Close()
 
+	// Direct call to the writer version
+	err = GenerateSceneToWriter(file, objects, eye, center, up, fovy, size, scale, light, ambient, diffuse, near, far, fit)
+	if err != nil {
+		log.Printf("aeno: could not generate scene to file: %v", err)
+	}
+}
+
+func GenerateSceneToWriter(writer io.Writer, objects []*Object, eye Vector, center Vector, up Vector, fovy float64, size int, scale int, light Vector, ambient string, diffuse string, near, far float64, fit bool) error {
+	width := size * scale
+	height := size * scale
 	aspect := float64(width) / float64(height)
-	fovy := 50.0
 
-	// Setup Matrices
-	view := LookAt(eye, center, up)
-	proj := Perspective(fovy, aspect, 0.1, 1000)
-	matrix := view.Mul(proj)
-
-	shader := NewPhongShader(matrix, light, eye, color.MulScalar(0.2), color)
+	// Initial matrix setup
+	matrix := LookAt(eye, center, up).Perspective(fovy, aspect, near, far)
+	shader := NewPhongShader(matrix, light, eye, HexColor(ambient), HexColor(diffuse))
 	
 	scene := NewScene(width, height, shader)
 	scene.Objects = objects
@@ -149,39 +152,19 @@ func GenerateScene(path string, objects []*Object, width, height int, fitCamera 
 	scene.Center = center
 	scene.Up = up
 
-	if fitCamera {
-		scene.FitCamera(fovy, aspect)
-		// Recompute matrix with new camera pos
-		view = LookAt(scene.Eye, scene.Center, scene.Up)
-		shader.Matrix = view.Mul(proj)
-		shader.CameraPosition = scene.Eye
-	}
+	scene.Context.ClearColorBufferWith(Transparent)
+	scene.Context.ClearDepthBuffer()
 
-	scene.Render()
-	scene.Save(path)
-}
-
-func GenerateSceneToWriter(w io.Writer, objects []*Object, width, height int, fit bool) error {
-	// Simplified pipeline for web/streams
-	scene := NewScene(width, height, nil)
-	// User must configure shader manually if using this low-level func, 
-	// or we provide a default:
-	scene.Objects = objects
-	
-	// Default setup
-	scene.Eye = V(3, 3, 3)
-	scene.Center = V(0, 0, 0)
-	scene.Up = V(0, 0, 1)
-	
 	if fit {
-		scene.FitCamera(45, float64(width)/float64(height))
+		scene.FitObjectsToScene(fovy, aspect, near, far)
+		
+		// Re-sync shader after the fit changes scene.Eye/FOV
+		view := LookAt(scene.Eye, scene.Center, scene.Up)
+		scene.Context.Shader.(*PhongShader).Matrix = view.Perspective(fovy, aspect, near, far)
+		scene.Context.Shader.(*PhongShader).CameraPosition = scene.Eye
 	}
-	
-	m := LookAt(scene.Eye, scene.Center, scene.Up).Perspective(45, float64(width)/float64(height), 0.1, 100)
-	scene.Context.Shader = NewPhongShader(m, V(1,1,1), scene.Eye, HexColor("#333"), HexColor("#FFF"))
 
 	scene.Render()
-	return png.Encode(w, scene.Context.Image())
 
+	return png.Encode(writer, scene.Context.Image())
 }
-

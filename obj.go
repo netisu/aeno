@@ -23,9 +23,9 @@ func LoadOBJFromBytes(b []byte) (*Mesh, error) {
 }
 
 func LoadOBJFromReader(r io.Reader) (*Mesh, error) {
-	vs := []Vector{{}} 
-	vts := []Vector{{}}
-	vns := []Vector{{}}
+	vs := make([]Vector, 1, 1024)
+	vts := make([]Vector, 1, 1024)
+	vns := make([]Vector, 1, 1024)
 	
 	var triangles []*Triangle
 	scanner := bufio.NewScanner(r)
@@ -43,31 +43,39 @@ func LoadOBJFromReader(r io.Reader) (*Mesh, error) {
 		case "v":
 			vs = append(vs, Vector{pf(fields[1]), pf(fields[2]), pf(fields[3])})
 		case "vt":
-			y := 0.0
-			if len(fields) > 2 { y = pf(fields[2]) }
-			vts = append(vts, Vector{pf(fields[1]), y, 0})
+			vts = append(vts, Vector{pf(fields[1]), pf(fields[2]), 0})
 		case "vn":
 			vns = append(vns, Vector{pf(fields[1]), pf(fields[2]), pf(fields[3])})
 		case "f":
-			fvs, fvts, fvns := parseFace(fields[1:])
-			// Fan triangulation
+			args := fields[1:]
+			fvs := make([]int, len(args))
+			fvts := make([]int, len(args))
+			fvns := make([]int, len(args))
+			
+			for i, arg := range args {
+				vertex := strings.Split(arg+"//", "/")
+				fvs[i] = fixIndex(vertex[0], len(vs))
+				fvts[i] = fixIndex(vertex[1], len(vts))
+				fvns[i] = fixIndex(vertex[2], len(vns))
+			}
+
 			for i := 1; i < len(fvs)-1; i++ {
 				t := &Triangle{}
+				i1, i2, i3 := 0, i, i+1
 				
-				// Apply fixIndex using the CURRENT length of the slices
-				t.V1.Position = vs[fixIndex(fvs[0], len(vs))]
-				t.V2.Position = vs[fixIndex(fvs[i], len(vs))]
-				t.V3.Position = vs[fixIndex(fvs[i+1], len(vs))]
+				t.V1.Position = vs[fvs[i1]]
+				t.V2.Position = vs[fvs[i2]]
+				t.V3.Position = vs[fvs[i3]]
 				
-				if len(vts) > 1 {
-					t.V1.Texture = vts[fixIndex(fvts[0], len(vts))]
-					t.V2.Texture = vts[fixIndex(fvts[i], len(vts))]
-					t.V3.Texture = vts[fixIndex(fvts[i+1], len(vts))]
+				if fvns[i1] > 0 {
+					t.V1.Normal = vns[fvns[i1]]
+					t.V2.Normal = vns[fvns[i2]]
+					t.V3.Normal = vns[fvns[i3]]
 				}
-				if len(vns) > 1 {
-					t.V1.Normal = vns[fixIndex(fvns[0], len(vns))]
-					t.V2.Normal = vns[fixIndex(fvns[i], len(vns))]
-					t.V3.Normal = vns[fixIndex(fvns[i+1], len(vns))]
+				if fvts[i1] > 0 {
+					t.V1.Texture = vts[fvts[i1]]
+					t.V2.Texture = vts[fvts[i2]]
+					t.V3.Texture = vts[fvts[i3]]
 				}
 				
 				t.FixNormals()
@@ -85,14 +93,15 @@ func pf(s string) float64 {
 }
 
 // Helper to handle negative indices in OBJ
-func fixIndex(i, n int) int {
-	if i > 0 {
-		return i
+func fixIndex(value string, length int) int {
+	if value == "" {
+		return 0
 	}
-	if i < 0 {
-		return n + i
+	parsed, _ := strconv.Atoi(value)
+	if parsed < 0 {
+		return parsed + length
 	}
-	return 0
+	return parsed
 }
 
 func parseFace(args []string) ([]int, []int, []int) {

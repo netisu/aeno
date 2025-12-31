@@ -4,6 +4,7 @@ import (
 	"image/png"
 	"io"
 	"os"
+	"log"
 )
 
 type Scene struct {
@@ -168,3 +169,4 @@ func GenerateSceneToWriter(writer io.Writer, objects []*Object, eye Vector, cent
 
 	return png.Encode(writer, scene.Context.Image())
 }
+

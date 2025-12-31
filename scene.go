@@ -33,21 +33,20 @@ func (s *Scene) FitObjectsToScene(fovy, aspect, near, far float64) {
 		return
 	}
 
-	// 1. Initial Setup using current Scene camera
 	matrix := LookAt(s.Eye, s.Center, s.Up).Perspective(fovy, aspect, near, far)
 	shader := NewPhongShader(matrix, Vector{}, s.Eye, HexColor("000000"), HexColor("000000"))
 
-	// 2. Combine all geometry into one temporary mesh for scaling
 	allMesh := NewEmptyMesh()
 	var boxes []Box
 	for _, o := range s.Objects {
-		if o.Mesh == nil { continue }
+		if o.Mesh == nil {
+			continue
+		}
 		allMesh.Add(o.Mesh)
-		boxes = append(boxes, o.Mesh.BoundingBox())
+		bb := o.Mesh.BoundingBox()
+		boxes = append(boxes, bb)
 	}
 
-	// 3. The "Zoom" secret: Scale the mesh down to a 1x1x1 cube
-	// This makes the object "fit" the camera's view distance
 	totalBox := BoxForBoxes(boxes)
 	unitCube := NewCubeForBox(totalBox)
 	unitCube.BiUnitCube() 
@@ -55,7 +54,6 @@ func (s *Scene) FitObjectsToScene(fovy, aspect, near, far float64) {
 	// Physically transform the vertices of allMesh
 	allMesh.FitInside(unitCube.BoundingBox(), V(0.5, 0.5, 0.5))
 
-	// 4. Update individual objects and adjust FOV if they are still 'Outside'
 	indexed := 0
 	var addedFOV float64
 	for _, o := range s.Objects {
@@ -182,5 +180,6 @@ func GenerateSceneToWriter(writer io.Writer, objects []*Object, eye Vector, cent
 
 	return png.Encode(writer, scene.Context.Image())
 }
+
 
 

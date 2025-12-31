@@ -34,31 +34,65 @@ func (s *Scene) FitCamera(fovy, aspect float64) {
 	}
 	
 	// Calculate bounding box of all objects
-	box := EmptyBox
-	for _, o := range s.Objects {
-		tBox := o.Mesh.BoundingBox().Transform(o.Matrix)
+	box := s.Objects[0].Mesh.BoundingBox().Transform(s.Objects[0].Matrix)
+	for i := 1; i < len(s.Objects); i++ {
+		tBox := s.Objects[i].Mesh.BoundingBox().Transform(s.Objects[i].Matrix)
 		box = box.Extend(tBox)
 	}
 
 	// Center the camera target on the center of the scene
 	s.Center = box.Center()
 
-	dir := s.Center.Sub(s.Eye).Normalize()
-	if dir.Length() == 0 {
-		dir = Vector{0, -1, 0}
+	// If Eye and Center are the same, default to looking from the front (+Z)
+	dir := s.Eye.Sub(s.Center).Normalize()
+	if dir.Length() < 0.0001 {
+		dir = Vector{0, 0, 1} 
 	}
 	
-	// Radius of the scene's bounding sphere
-	radius := box.Size().Length() / 2.0
+	size := box.Size()
+	maxDim := math.Max(size.X, math.Max(size.Y, size.Z))
 	
-
-	sinFov := math.Sin(Radians(fovy) / 2.0)
-	distance := radius / sinFov
+	// We use the smaller of vertical/horizontal FOV to ensure no clipping
+	theta := Radians(fovy) / 2.0
+	if aspect < 1.0 {
+		// If portrait, the horizontal FOV is smaller
+		theta = math.Atan(math.Tan(theta) * aspect)
+	}
 	
-	// Add a little padding (10%)
+	distance := (maxDim / 2.0) / math.Tan(theta)
+	
+	// 10% padding
 	distance *= 1.1
 
-	s.Eye = s.Center.Sub(dir.MulScalar(distance))
+	// Update Eye position
+	s.Eye = s.Center.Add(dir.MulScalar(distance))
+}
+
+func (s *Scene) GetSafetyClipping() (near, far float64) {
+	if len(s.Objects) == 0 {
+		return 0.1, 1000.0
+	}
+	box := s.Objects[0].Mesh.BoundingBox().Transform(s.Objects[0].Matrix)
+	for i := 1; i < len(s.Objects); i++ {
+		box = box.Extend(s.Objects[i].Mesh.BoundingBox().Transform(s.Objects[i].Matrix))
+	}
+
+	distToCenter := s.Eye.Sub(box.Center()).Length()
+	
+	// The radius of the object (from center to furthest corner)
+	radius := box.Size().Length() / 2.0
+
+	// Near cannot be <= 0, or the projection matrix math explodes
+	near = distToCenter - radius
+	if near < 0.1 {
+		near = 0.1 
+	} else {
+		near *= 0.9 
+	}
+
+	far = (distToCenter + radius) * 1.1
+
+	return near, far
 }
 
 func (s *Scene) Render() {
@@ -136,4 +170,5 @@ func GenerateSceneToWriter(w io.Writer, objects []*Object, width, height int, fi
 
 	scene.Render()
 	return png.Encode(w, scene.Context.Image())
+
 }

@@ -23,14 +23,11 @@ func LoadOBJFromBytes(b []byte) (*Mesh, error) {
 }
 
 func LoadOBJFromReader(r io.Reader) (*Mesh, error) {
-	// Pre-allocate to avoid frequent resizing
-	vs := make([]Vector, 1, 1024) 
-	vts := make([]Vector, 1, 1024)
-	vns := make([]Vector, 1, 1024)
+	vs := []Vector{{}} 
+	vts := []Vector{{}}
+	vns := []Vector{{}}
 	
 	var triangles []*Triangle
-	
-	// fast line reading
 	scanner := bufio.NewScanner(r)
 	
 	for scanner.Scan() {
@@ -40,9 +37,7 @@ func LoadOBJFromReader(r io.Reader) (*Mesh, error) {
 		}
 		
 		fields := strings.Fields(line)
-		if len(fields) == 0 {
-			continue
-		}
+		if len(fields) == 0 { continue }
 		
 		switch fields[0] {
 		case "v":
@@ -54,11 +49,12 @@ func LoadOBJFromReader(r io.Reader) (*Mesh, error) {
 		case "vn":
 			vns = append(vns, Vector{pf(fields[1]), pf(fields[2]), pf(fields[3])})
 		case "f":
-			// Fan triangulation for polygons > 3 vertices
-			// v1 is pivot
 			fvs, fvts, fvns := parseFace(fields[1:])
+			// Fan triangulation
 			for i := 1; i < len(fvs)-1; i++ {
 				t := &Triangle{}
+				
+				// Apply fixIndex using the CURRENT length of the slices
 				t.V1.Position = vs[fixIndex(fvs[0], len(vs))]
 				t.V2.Position = vs[fixIndex(fvs[i], len(vs))]
 				t.V3.Position = vs[fixIndex(fvs[i+1], len(vs))]
@@ -73,6 +69,7 @@ func LoadOBJFromReader(r io.Reader) (*Mesh, error) {
 					t.V2.Normal = vns[fixIndex(fvns[i], len(vns))]
 					t.V3.Normal = vns[fixIndex(fvns[i+1], len(vns))]
 				}
+				
 				t.FixNormals()
 				triangles = append(triangles, t)
 			}
@@ -89,10 +86,13 @@ func pf(s string) float64 {
 
 // Helper to handle negative indices in OBJ
 func fixIndex(i, n int) int {
+	if i > 0 {
+		return i
+	}
 	if i < 0 {
 		return n + i
 	}
-	return i
+	return 0
 }
 
 func parseFace(args []string) ([]int, []int, []int) {

@@ -9,88 +9,111 @@ import (
 	"strings"
 )
 
-func parseIndex(value string, length int) int {
-	parsed, _ := strconv.ParseInt(value, 0, 0)
-	n := int(parsed)
-	if n < 0 {
-		n += length
-	}
-	return n
-}
-
-// LoadOBJ returns mesh data from given file path
 func LoadOBJ(path string) (*Mesh, error) {
 	file, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}
 	defer file.Close()
-
 	return LoadOBJFromReader(file)
 }
 
-// LoadOBJFromBytes returns mesh data from given bytes
 func LoadOBJFromBytes(b []byte) (*Mesh, error) {
-	r := bytes.NewReader(b)
-
-	return LoadOBJFromReader(r)
+	return LoadOBJFromReader(bytes.NewReader(b))
 }
 
-// LoadOBJFromReader returns mesh data from given reader in obj file format
 func LoadOBJFromReader(r io.Reader) (*Mesh, error) {
-	vs := make([]Vector, 1, 1024)  // 1-based indexing
-	vts := make([]Vector, 1, 1024) // 1-based indexing
-	vns := make([]Vector, 1, 1024) // 1-based indexing
+	// Pre-allocate to avoid frequent resizing
+	vs := make([]Vector, 1, 1024) 
+	vts := make([]Vector, 1, 1024)
+	vns := make([]Vector, 1, 1024)
+	
 	var triangles []*Triangle
+	
+	// fast line reading
 	scanner := bufio.NewScanner(r)
+	
 	for scanner.Scan() {
 		line := scanner.Text()
+		if len(line) < 2 || line[0] == '#' {
+			continue
+		}
+		
 		fields := strings.Fields(line)
 		if len(fields) == 0 {
 			continue
 		}
-		keyword := fields[0]
-		args := fields[1:]
-		switch keyword {
+		
+		switch fields[0] {
 		case "v":
-			f := ParseFloats(args)
-			v := Vector{f[0], f[1], f[2]}
-			vs = append(vs, v)
+			vs = append(vs, Vector{pf(fields[1]), pf(fields[2]), pf(fields[3])})
 		case "vt":
-			f := ParseFloats(args)
-			v := Vector{f[0], f[1], 0}
-			vts = append(vts, v)
+			y := 0.0
+			if len(fields) > 2 { y = pf(fields[2]) }
+			vts = append(vts, Vector{pf(fields[1]), y, 0})
 		case "vn":
-			f := ParseFloats(args)
-			v := Vector{f[0], f[1], f[2]}
-			vns = append(vns, v)
+			vns = append(vns, Vector{pf(fields[1]), pf(fields[2]), pf(fields[3])})
 		case "f":
-			fvs := make([]int, len(args))
-			fvts := make([]int, len(args))
-			fvns := make([]int, len(args))
-			for i, arg := range args {
-				vertex := strings.Split(arg+"//", "/")
-				fvs[i] = parseIndex(vertex[0], len(vs))
-				fvts[i] = parseIndex(vertex[1], len(vts))
-				fvns[i] = parseIndex(vertex[2], len(vns))
-			}
+			// Fan triangulation for polygons > 3 vertices
+			// v1 is pivot
+			fvs, fvts, fvns := parseFace(fields[1:])
 			for i := 1; i < len(fvs)-1; i++ {
-				i1, i2, i3 := 0, i, i+1
-				t := Triangle{}
-				t.V1.Position = vs[fvs[i1]]
-				t.V2.Position = vs[fvs[i2]]
-				t.V3.Position = vs[fvs[i3]]
-				t.V1.Normal = vns[fvns[i1]]
-				t.V2.Normal = vns[fvns[i2]]
-				t.V3.Normal = vns[fvns[i3]]
-				t.V1.Texture = vts[fvts[i1]]
-				t.V2.Texture = vts[fvts[i2]]
-				t.V3.Texture = vts[fvts[i3]]
+				t := &Triangle{}
+				t.V1.Position = vs[fixIndex(fvs[0], len(vs))]
+				t.V2.Position = vs[fixIndex(fvs[i], len(vs))]
+				t.V3.Position = vs[fixIndex(fvs[i+1], len(vs))]
+				
+				if len(vts) > 1 {
+					t.V1.Texture = vts[fixIndex(fvts[0], len(vts))]
+					t.V2.Texture = vts[fixIndex(fvts[i], len(vts))]
+					t.V3.Texture = vts[fixIndex(fvts[i+1], len(vts))]
+				}
+				if len(vns) > 1 {
+					t.V1.Normal = vns[fixIndex(fvns[0], len(vns))]
+					t.V2.Normal = vns[fixIndex(fvns[i], len(vns))]
+					t.V3.Normal = vns[fixIndex(fvns[i+1], len(vns))]
+				}
 				t.FixNormals()
-				triangles = append(triangles, &t)
+				triangles = append(triangles, t)
 			}
 		}
 	}
-
 	return NewTriangleMesh(triangles), scanner.Err()
+}
+
+// Helper for fast float parsing
+func pf(s string) float64 {
+	f, _ := strconv.ParseFloat(s, 64)
+	return f
+}
+
+// Helper to handle negative indices in OBJ
+func fixIndex(i, n int) int {
+	if i < 0 {
+		return n + i
+	}
+	return i
+}
+
+func parseFace(args []string) ([]int, []int, []int) {
+	n := len(args)
+	vi := make([]int, n)
+	vt := make([]int, n)
+	vn := make([]int, n)
+	
+	for i, s := range args {
+		// Manual split is faster than strings.Split for simple cases
+		// formats: v, v/vt, v//vn, v/vt/vn
+		parts := strings.Split(s, "/")
+		
+		vi[i], _ = strconv.Atoi(parts[0])
+		
+		if len(parts) > 1 && parts[1] != "" {
+			vt[i], _ = strconv.Atoi(parts[1])
+		}
+		if len(parts) > 2 && parts[2] != "" {
+			vn[i], _ = strconv.Atoi(parts[2])
+		}
+	}
+	return vi, vt, vn
 }

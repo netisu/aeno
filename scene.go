@@ -2,183 +2,138 @@ package aeno
 
 import (
 	"image/png"
-	"log"
 	"io"
+	"math"
 	"os"
 )
 
-// Scene struct to store all data for a scene
 type Scene struct {
-	Context         *Context
-	Objects         []*Object
-	Shader          Shader
-	eye, center, up Vector
-	fovy, aspect    float64
+	Context *Context
+	Objects []*Object
+	Eye     Vector
+	Center  Vector
+	Up      Vector
 }
 
-// NewScene returns a new scene
-func NewScene(eye Vector, center Vector, up Vector, fovy float64, size int, scale int, shader Shader) *Scene {
-	aspect := float64(size) / float64(size)
-	context := NewContext(size*scale, size*scale, 5, shader)
-	return &Scene{context, nil, shader, eye, center, up, fovy, aspect}
+func NewScene(width, height int, shader Shader) *Scene {
+	return &Scene{
+		Context: NewContext(width, height, shader),
+		Objects: []*Object{},
+		Up:      Vector{0, 0, 1}, // Default Up
+	}
 }
-// AddObject adds an object to the scene
-func (s *Scene) AddObject(o *Object) {
+
+func (s *Scene) Add(o *Object) {
 	s.Objects = append(s.Objects, o)
 }
 
-// AddObjects is a convenience method to add multiple objects
-func (s *Scene) AddObjects(objects []*Object) {
-	for _, o := range objects {
-		s.AddObject(o)
-	}
-}
-
-// A helper function to update the matrix in a shader if the shader supports it.
-func updateShaderMatrix(shader Shader, matrix Matrix) {
-	if s, ok := shader.(interface{ SetMatrix(Matrix) }); ok {
-		s.SetMatrix(matrix)
-	} else if p, ok := shader.(*PhongShader); ok { // Fallback for specific known types
-		p.Matrix = matrix
-	} else if t, ok := shader.(*ToonShader); ok {
-		t.Matrix = matrix
-	}
-}
-
-// FitObjectsToScene fits the objects into a 0.5 unit bounding box
-func (s *Scene) FitObjectsToScene(eye, center, up Vector, fovy, aspect, near, far float64) (matrix Matrix) {
-	matrix = LookAt(eye, center, up).Perspective(fovy, aspect, near, far)
-	shader := NewPhongShader(matrix, Vector{}, eye, HexColor("000000"), HexColor("000000"))
-
-	allMesh := NewEmptyMesh()
-	var boxes []Box
-	for _, o := range s.Objects {
-		if o.Mesh == nil {
-			continue
-		}
-		allMesh.Add(o.Mesh)
-		bb := o.Mesh.BoundingBox()
-		boxes = append(boxes, bb)
-	}
-	box := BoxForBoxes(boxes)
-	b := NewCubeForBox(box)
-	b.BiUnitCube()
-	allMesh.FitInside(b.BoundingBox(), V(0.5, 0.5, 0.5))
-
-	indexed := 0
-	var addedFOV float64
-	for _, o := range s.Objects {
-		if o.Mesh == nil {
-			continue
-		}
-		num := len(o.Mesh.Triangles)
-		tris := allMesh.Triangles[indexed : num+indexed]
-		allInside := false
-		for !allInside && len(tris) > 0 {
-			for _, t := range tris {
-				v1 := shader.Vertex(t.V1)
-				v2 := shader.Vertex(t.V2)
-				v3 := shader.Vertex(t.V3)
-
-				if v1.Outside() || v2.Outside() || v3.Outside() {
-					addedFOV += 5
-					matrix = LookAt(eye, center, up).Perspective(fovy+addedFOV, aspect, near, far)
-					shader.Matrix = matrix
-					allInside = false
-				} else {
-					allInside = true
-				}
-			}
-		}
-
-		o.Mesh = NewTriangleMesh(tris)
-		indexed += num
-	}
-
-	return
-}
-
-// Draw draws the scene
-func (s *Scene) Draw(fit bool, path string, objects []*Object) {
-	s.AddObjects(objects)
-	if fit {
-		newMatrix := s.FitObjectsToScene(s.eye, s.center, s.up, s.fovy, s.aspect, 1, 999)
-		if p, ok := s.Shader.(*PhongShader); ok {
-			p.Matrix = newMatrix
-		} else if t, ok := s.Shader.(*ToonShader); ok {
-			t.Matrix = newMatrix
-		}
-	}
-	for _, o := range s.Objects {
-		if o.Mesh == nil {
-			log.Printf("Object attempted to render with nil mesh")
-			continue
-		}
-		s.Context.DrawObject(o)
-	}
-
-
-	file, err := os.Create(path)
-	if err != nil {
-		log.Printf("aeno: could not create file in Draw: %v", err)
+// FitCamera automatically positions the eye to see all objects.
+func (s *Scene) FitCamera(fovy, aspect float64) {
+	if len(s.Objects) == 0 {
 		return
 	}
-	defer file.Close()
-
-	if err := png.Encode(file, s.Context.Image()); err != nil {
-		log.Printf("aeno: could not encode png in Draw: %v", err)
+	
+	// Calculate bounding box of all objects
+	box := EmptyBox
+	for _, o := range s.Objects {
+		tBox := o.Mesh.BoundingBox().Transform(o.Matrix)
+		box = box.Extend(tBox)
 	}
+
+	// Center the camera target on the center of the scene
+	s.Center = box.Center()
+
+	dir := s.Center.Sub(s.Eye).Normalize()
+	if dir.Length() == 0 {
+		dir = Vector{0, -1, 0}
+	}
+	
+	// Radius of the scene's bounding sphere
+	radius := box.Size().Length() / 2.0
+	
+
+	sinFov := math.Sin(Radians(fovy) / 2.0)
+	distance := radius / sinFov
+	
+	// Add a little padding (10%)
+	distance *= 1.1
+
+	s.Eye = s.Center.Sub(dir.MulScalar(distance))
 }
 
-func (s *Scene) DrawToWriter(fit bool, writer io.Writer, objects []*Object) error {
-	s.AddObjects(objects)
-	if fit {
-		newMatrix := s.FitObjectsToScene(s.eye, s.center, s.up, s.fovy, s.aspect, 1, 999)
-		if p, ok := s.Shader.(*PhongShader); ok {
-			p.Matrix = newMatrix
-		} else if t, ok := s.Shader.(*ToonShader); ok {
-			t.Matrix = newMatrix
-		}
-	}
-
+func (s *Scene) Render() {
 	for _, o := range s.Objects {
-		if o.Mesh == nil {
-			log.Printf("Object attempted to render with nil mesh")
-			continue
-		}
 		s.Context.DrawObject(o)
 	}
-	
-	// Encode the final image directly to the provided writer.
-	return png.Encode(writer, s.Context.Image())
 }
 
-func GenerateScene(fit bool, path string, objects []*Object, eye Vector, center Vector, up Vector, fovy float64, size int, scale int, light Vector, ambient string, diffuse string, near, far float64) {
-	file, err := os.Create(path)
+func (s *Scene) Save(path string) error {
+	f, err := os.Create(path)
 	if err != nil {
-		log.Printf("aeno: could not create file for GenerateScene: %v", err)
-		return
+		return err
 	}
-	defer file.Close()
-
-	err = GenerateSceneToWriter(file, objects, eye, center, up, fovy, size, scale, light, ambient, diffuse, near, far, fit)
-	if err != nil {
-		log.Printf("aeno: could not generate scene to file: %v", err)
-	}
-}
-func GenerateSceneWithShader(fit bool, shader Shader, path string, objects []*Object, eye Vector, center Vector, up Vector, fovy float64, size int, scale int) {
-	// Directly pass the provided shader to the scene
-	scene := NewScene(eye, center, up, fovy, size, scale, shader)
-	scene.Draw(fit, path, objects)
+	defer f.Close()
+	return png.Encode(f, s.Context.Image())
 }
 
-func GenerateSceneToWriter(writer io.Writer, objects []*Object, eye Vector, center Vector, up Vector, fovy float64, size int, scale int, light Vector, ambient string, diffuse string, near, far float64, fit bool) error {
-	aspect := float64(size) / float64(size)
-	matrix := LookAt(eye, center, up).Perspective(fovy, aspect, near, far)
+// GenerateScene is a high-level helper
+func GenerateScene(path string, objects []*Object, width, height int, fitCamera bool) {
+	// Default light and material
+	light := Vector{0.5, 0.5, 1}
+	color := HexColor("#FFF")
 	
-	shader := NewPhongShader(matrix, light, eye, HexColor(ambient), HexColor(diffuse))
-	scene := NewScene(eye, center, up, fovy, size, scale, shader)
+	// Initial camera (will be moved if fitCamera is true)
+	eye := Vector{2, 2, 2}
+	center := Vector{0, 0, 0}
+	up := Vector{0, 0, 1}
 
-	// Call the new core drawing method.
-	return scene.DrawToWriter(fit, writer, objects)
+	aspect := float64(width) / float64(height)
+	fovy := 50.0
+
+	// Setup Matrices
+	view := LookAt(eye, center, up)
+	proj := Perspective(fovy, aspect, 0.1, 1000)
+	matrix := view.Mul(proj)
+
+	shader := NewPhongShader(matrix, light, eye, color.MulScalar(0.2), color)
+	
+	scene := NewScene(width, height, shader)
+	scene.Objects = objects
+	scene.Eye = eye
+	scene.Center = center
+	scene.Up = up
+
+	if fitCamera {
+		scene.FitCamera(fovy, aspect)
+		// Recompute matrix with new camera pos
+		view = LookAt(scene.Eye, scene.Center, scene.Up)
+		shader.Matrix = view.Mul(proj)
+		shader.CameraPosition = scene.Eye
+	}
+
+	scene.Render()
+	scene.Save(path)
+}
+
+func GenerateSceneToWriter(w io.Writer, objects []*Object, width, height int, fit bool) error {
+	// Simplified pipeline for web/streams
+	scene := NewScene(width, height, nil)
+	// User must configure shader manually if using this low-level func, 
+	// or we provide a default:
+	scene.Objects = objects
+	
+	// Default setup
+	scene.Eye = V(3, 3, 3)
+	scene.Center = V(0, 0, 0)
+	scene.Up = V(0, 0, 1)
+	
+	if fit {
+		scene.FitCamera(45, float64(width)/float64(height))
+	}
+	
+	m := LookAt(scene.Eye, scene.Center, scene.Up).Perspective(45, float64(width)/float64(height), 0.1, 100)
+	scene.Context.Shader = NewPhongShader(m, V(1,1,1), scene.Eye, HexColor("#333"), HexColor("#FFF"))
+
+	scene.Render()
+	return png.Encode(w, scene.Context.Image())
 }

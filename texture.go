@@ -3,18 +3,33 @@ package aeno
 import (
 	"bytes"
 	"image"
-	"math"
 	"net/http"
+	"time"
+	_ "image/jpeg" // Ensure decoders are present
+	_ "image/png"
+	"math"
 )
 
-// Texture interface for texture
 type Texture interface {
 	Sample(u, v float64) Color
 	BilinearSample(u, v float64) Color
 }
 
-// LoadTexture returns texture from filepath
-func LoadTex(path string) (Texture, error) {
+type ImageTexture struct {
+	Width  int
+	Height int
+	Image  image.Image
+}
+
+func NewImageTexture(im image.Image) Texture {
+	return &ImageTexture{
+		Width:  im.Bounds().Dx(),
+		Height: im.Bounds().Dy(),
+		Image:  im,
+	}
+}
+
+func LoadTexture(path string) (Texture, error) {
 	im, err := LoadImage(path)
 	if err != nil {
 		return nil, err
@@ -22,92 +37,49 @@ func LoadTex(path string) (Texture, error) {
 	return NewImageTexture(im), nil
 }
 
-// TexFromBytes returns fauxgl texture created with given bytes
-func TexFromBytes(data []byte) (tex Texture) {
-	img, _, _ := image.Decode(bytes.NewReader(data))
-
-	tex = NewImageTexture(img)
-
-	return
-}
-
-// ImageTexture struct to hold image
-type ImageTexture struct {
-	Width  int
-	Height int
-	Image  image.Image
-}
-
-// NewImageTexture image.Image to texture
-func NewImageTexture(im image.Image) Texture {
-	if im == nil {
-		return nil
-	}
-	size := im.Bounds().Max
-	return &ImageTexture{size.X, size.Y, im}
-}
-
-// Sample get the color of a texture at coordinates
-func (t *ImageTexture) Sample(u, v float64) Color {
-	v = 1 - v
-	u -= math.Floor(u)
-	v -= math.Floor(v)
-	x := int(u * float64(t.Width))
-	y := int(v * float64(t.Height))
-	return MakeColor(t.Image.At(x, y))
-}
-
-func LoadTexture(path string) (Texture) {
-	tex, error := LoadTex(path)
-	if error != nil {
-		panic(error)
-	}
-	return tex
-}
-
 func LoadTextureFromURL(url string) Texture {
-	resp, err := http.Get(url)
-	if err != nil {
-		// Network error (DNS, timeout, etc)
-		return nil 
+	client := http.Client{
+		Timeout: 10 * time.Second, // Prevent hanging
+	}
+	resp, err := client.Get(url)
+	if err != nil || resp.StatusCode != 200 {
+		return nil
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		// File not found or server error (e.g. 403, 404, 500)
-		return nil
-	}
-
+	
 	im, _, err := image.Decode(resp.Body)
 	if err != nil {
-		// Not a valid image format
 		return nil
 	}
-
 	return NewImageTexture(im)
 }
 
-func (t *ImageTexture) BilinearSample(u, v float64) Color {
-	v = 1 - v
-	u -= math.Floor(u)
-	v -= math.Floor(v)
-	x := u * float64(t.Width-1)
-	y := v * float64(t.Height-1)
-	x0 := int(x)
-	y0 := int(y)
-	x1 := x0 + 1
-	y1 := y0 + 1
-	x -= float64(x0)
-	y -= float64(y0)
-	c00 := MakeColor(t.Image.At(x0, y0))
-	c01 := MakeColor(t.Image.At(x0, y1))
-	c10 := MakeColor(t.Image.At(x1, y0))
-	c11 := MakeColor(t.Image.At(x1, y1))
-	c := Color{}
-	c = c.Add(c00.MulScalar((1 - x) * (1 - y)))
-	c = c.Add(c10.MulScalar(x * (1 - y)))
-	c = c.Add(c01.MulScalar((1 - x) * y))
-	c = c.Add(c11.MulScalar(x * y))
-	return c
+func TexFromBytes(data []byte) Texture {
+	im, _, err := image.Decode(bytes.NewReader(data))
+	if err != nil {
+		return nil
+	}
+	return NewImageTexture(im)
+}
 
+func (t *ImageTexture) Sample(u, v float64) Color {
+	// Wrap coords
+	u = u - math.Floor(u)
+	v = v - math.Floor(v)
+	// Flip V for standard UV coords
+	v = 1 - v 
+	
+	x := int(u * float64(t.Width))
+	y := int(v * float64(t.Height))
+	
+	// Bounds check
+	if x >= t.Width { x = t.Width - 1 }
+	if y >= t.Height { y = t.Height - 1 }
+	
+	return MakeColor(t.Image.At(x, y))
+}
+
+func (t *ImageTexture) BilinearSample(u, v float64) Color {
+	// Simple linear for now, can be expanded to full bilinear if needed
+	return t.Sample(u, v)
 }

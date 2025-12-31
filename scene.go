@@ -33,51 +33,64 @@ func (s *Scene) FitObjectsToScene(fovy, aspect, near, far float64) {
 		return
 	}
 
-	box := s.Objects[0].Mesh.BoundingBox().Transform(s.Objects[0].Matrix)
-	for i := 1; i < len(s.Objects); i++ {
-		tBox := s.Objects[i].Mesh.BoundingBox().Transform(s.Objects[i].Matrix)
-		box = box.Extend(tBox)
-	}
-	s.Center = box.Center()
-
+	// 1. Initial Setup using current Scene camera
 	matrix := LookAt(s.Eye, s.Center, s.Up).Perspective(fovy, aspect, near, far)
 	shader := NewPhongShader(matrix, Vector{}, s.Eye, HexColor("000000"), HexColor("000000"))
 
+	// 2. Combine all geometry into one temporary mesh for scaling
+	allMesh := NewEmptyMesh()
+	var boxes []Box
+	for _, o := range s.Objects {
+		if o.Mesh == nil { continue }
+		allMesh.Add(o.Mesh)
+		boxes = append(boxes, o.Mesh.BoundingBox())
+	}
+
+	// 3. The "Zoom" secret: Scale the mesh down to a 1x1x1 cube
+	// This makes the object "fit" the camera's view distance
+	totalBox := BoxForBoxes(boxes)
+	unitCube := NewCubeForBox(totalBox)
+	unitCube.BiUnitCube() 
+	
+	// Physically transform the vertices of allMesh
+	allMesh.FitInside(unitCube.BoundingBox(), V(0.5, 0.5, 0.5))
+
+	// 4. Update individual objects and adjust FOV if they are still 'Outside'
+	indexed := 0
 	var addedFOV float64
-	allInside := false
-
-	// We limit to 170 degrees to prevent mathematical inversion
-	for !allInside && (fovy+addedFOV) < 170 {
-		allInside = true // Assume true until proven otherwise
-		currentMatrix := LookAt(s.Eye, s.Center, s.Up).Perspective(fovy+addedFOV, aspect, near, far)
-		shader.Matrix = currentMatrix
-
-		for _, o := range s.Objects {
-			if o.Mesh == nil {
-				continue
-			}
-			
-			// Check every triangle in the object
-			for _, t := range o.Mesh.Triangles {
-				// Project vertices using the shader's matrix logic
+	for _, o := range s.Objects {
+		if o.Mesh == nil { continue }
+		
+		num := len(o.Mesh.Triangles)
+		// Extract the newly scaled triangles from the combined mesh
+		tris := allMesh.Triangles[indexed : num+indexed]
+		
+		allInside := false
+		for !allInside && len(tris) > 0 {
+			allInside = true 
+			for _, t := range tris {
 				v1 := shader.Vertex(t.V1)
 				v2 := shader.Vertex(t.V2)
 				v3 := shader.Vertex(t.V3)
 
 				if v1.Outside() || v2.Outside() || v3.Outside() {
-					addedFOV += 1.0 // Increase FOV slightly
+					addedFOV += 1.0
+					matrix = LookAt(s.Eye, s.Center, s.Up).Perspective(fovy+addedFOV, aspect, near, far)
+					shader.Matrix = matrix
 					allInside = false
-					break // Re-check with new FOV
+					break
 				}
 			}
-			if !allInside { break }
 		}
+
+		o.Mesh = NewTriangleMesh(tris)
+		indexed += num
 	}
 
-	// Update the Scene and Shader with the final working parameters
-	finalFOV := fovy + addedFOV
-	shader.Matrix = LookAt(s.Eye, s.Center, s.Up).Perspective(finalFOV, aspect, near, far)
-	shader.CameraPosition = s.Eye
+	finalMatrix := LookAt(s.Eye, s.Center, s.Up).Perspective(fovy+addedFOV, aspect, near, far)
+	if phong, ok := s.Context.Shader.(*PhongShader); ok {
+		phong.Matrix = finalMatrix
+	}
 }
 
 func (s *Scene) GetSafetyClipping() (near, far float64) {
@@ -169,4 +182,5 @@ func GenerateSceneToWriter(writer io.Writer, objects []*Object, eye Vector, cent
 
 	return png.Encode(writer, scene.Context.Image())
 }
+
 

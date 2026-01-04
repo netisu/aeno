@@ -32,8 +32,9 @@ func (s *Scene) FitObjectsToScene(fovy, aspect, near, far float64) {
 	if len(s.Objects) == 0 {
 		return
 	}
-
-	matrix := LookAt(s.Eye, s.Center, s.Up).Perspective(fovy, aspect, near, far)
+	
+	viewMatrix := LookAt(s.Eye, s.Center, s.Up)
+	matrix := viewMatrix.Perspective(fovy, aspect, near, far)
 	shader := NewPhongShader(matrix, Vector{}, s.Eye, HexColor("000000"), HexColor("000000"))
 
 	allMesh := NewEmptyMesh()
@@ -73,7 +74,7 @@ func (s *Scene) FitObjectsToScene(fovy, aspect, near, far float64) {
 
 				if v1.Outside() || v2.Outside() || v3.Outside() {
 					addedFOV += 1.0
-					matrix = LookAt(s.Eye, s.Center, s.Up).Perspective(fovy+addedFOV, aspect, near, far)
+					matrix = viewMatrix.Perspective(fovy+addedFOV, aspect, near, far)
 					shader.Matrix = matrix
 					allInside = false
 					break
@@ -85,7 +86,10 @@ func (s *Scene) FitObjectsToScene(fovy, aspect, near, far float64) {
 		indexed += num
 	}
 
-	finalMatrix := LookAt(s.Eye, s.Center, s.Up).Perspective(fovy+addedFOV, aspect, near, far)
+	padding := 5.0
+	finalFOV := fovy + addedFOV + padding
+
+	finalMatrix := viewMatrix.Perspective(finalFOV, aspect, near, far)
 	if phong, ok := s.Context.Shader.(*PhongShader); ok {
 		phong.Matrix = finalMatrix
 	}
@@ -180,6 +184,7 @@ func GenerateSceneToWriter(writer io.Writer, objects []*Object, eye Vector, cent
 
 	return png.Encode(writer, scene.Context.Image())
 }
+
 
 
 

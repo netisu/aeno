@@ -73,7 +73,7 @@ func (s *Scene) FitObjectsToScene(fovy, aspect, near, far float64) {
 				v3 := shader.Vertex(t.V3)
 
 				if v1.Outside() || v2.Outside() || v3.Outside() {
-					addedFOV += 1.0
+					addedFOV += 5.0
 					matrix = viewMatrix.Perspective(fovy+addedFOV, aspect, near, far)
 					shader.Matrix = matrix
 					allInside = false
@@ -86,13 +86,7 @@ func (s *Scene) FitObjectsToScene(fovy, aspect, near, far float64) {
 		indexed += num
 	}
 
-	padding := 5.0
-	finalFOV := fovy + addedFOV + padding
-
-	finalMatrix := viewMatrix.Perspective(finalFOV, aspect, near, far)
-	if phong, ok := s.Context.Shader.(*PhongShader); ok {
-		phong.Matrix = finalMatrix
-	}
+	return
 }
 
 func (s *Scene) GetSafetyClipping() (near, far float64) {
@@ -184,6 +178,7 @@ func GenerateSceneToWriter(writer io.Writer, objects []*Object, eye Vector, cent
 
 	return png.Encode(writer, scene.Context.Image())
 }
+
 
 
 

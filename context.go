@@ -108,18 +108,15 @@ func edge(a, b, c Vector) float64 {
 func (dc *Context) rasterize(v0, v1, v2 Vertex, s0, s1, s2 Vector, fromObject *Object) {
 	min := s0.Min(s1.Min(s2)).Floor()
 	max := s0.Max(s1.Max(s2)).Ceil()
-
+	dc.MinX = mathMin(dc.MinX, int(min.X))
+	dc.MaxX = mathMax(dc.MaxX, int(max.X))
+	dc.MinY = mathMin(dc.MinY, int(min.Y))
+	dc.MaxY = mathMax(dc.MaxY, int(max.Y))
 	x0 := int(min.X)
 	x1 := int(max.X)
 	y0 := int(min.Y)
 	y1 := int(max.Y)
-
-	// Clip to screen bounds
-	x0 = ClampInt(x0, 0, dc.Width-1)
-	x1 = ClampInt(x1, 0, dc.Width-1)
-	y0 = ClampInt(y0, 0, dc.Height-1)
-	y1 = ClampInt(y1, 0, dc.Height-1)
-
+	
 	p := Vector{float64(x0) + 0.5, float64(y0) + 0.5, 0}
 	w00 := edge(s1, s2, p)
 	w01 := edge(s2, s0, p)
@@ -336,4 +333,5 @@ func (dc *Context) DrawObject(o *Object) {
 	} else {
 		dc.DrawMesh(o.Mesh, o)
 	}
+
 }

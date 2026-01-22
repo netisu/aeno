@@ -279,9 +279,9 @@ func (dc *Context) DrawTriangle(t *Triangle, fromObject *Object) {
 		for _, t := range triangles {
 			dc.drawClippedTriangle(t.V1, t.V2, t.V3, fromObject)
 		}
-	} else {
-		dc.drawClippedTriangle(v1, v2, v3, fromObject)
+		return
 	}
+	dc.drawClippedTriangle(v1, v2, v3, fromObject)
 }
 
 func (dc *Context) DrawLine(l *Line, fromObject *Object) {
@@ -293,9 +293,10 @@ func (dc *Context) DrawLine(l *Line, fromObject *Object) {
 		if line != nil {
 			dc.drawClippedLine(line.V1, line.V2, fromObject)
 		}
-	} else {
-		dc.drawClippedLine(v1, v2, fromObject)
+		return
 	}
+	
+	dc.drawClippedLine(v1, v2, fromObject)
 }
 
 func (dc *Context) DrawMesh(mesh *Mesh, fromObject *Object) {
@@ -335,3 +336,4 @@ func (dc *Context) DrawObject(o *Object) {
 	}
 
 }
+

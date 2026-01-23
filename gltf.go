@@ -3,6 +3,7 @@ package aeno
 import (
 	"fmt"
 	"github.com/qmuntal/gltf"
+	"github.com/qmuntal/gltf/modeler"
 )
 
 // LoadGLTF loads a .gltf or .glb file and converts it to an aeno.Mesh
@@ -22,47 +23,72 @@ func LoadGLTF(path string) (*Mesh, error) {
 			}
 
 			// extract positions
-			positions, err := gltf.Modeler{Model: doc}.Position(primitive.Indices, primitive.Attributes)
-			if err != nil {
+			posIdx, ok := primitive.Attributes[gltf.POSITION]
+			if !ok {
 				continue
+			}
+			positions, err := modeler.ReadPosition(doc, doc.Accessors[posIdx], nil)
+			if err != nil {
+				return nil, err
 			}
 			
 			// extract normals
-			normals, _ := gltf.Modeler{Model: doc}.Normal(primitive.Indices, primitive.Attributes)
-			
-			// extract texture coords
-			texCoords, _ := gltf.Modeler{Model: doc}.TextureCoord(0, primitive.Indices, primitive.Attributes)
+			var normals [][3]float32
+			if normIdx, ok := primitive.Attributes[gltf.NORMAL]; ok {
+				normals, _ = modeler.ReadNormal(doc, doc.Accessors[normIdx], nil)
+			}
 
-			// GLTF returns flat arrays, we need to group them into triplets
-			for i := 0; i < len(positions); i += 3 {
+			// Read Texture Coordinates
+			var texCoords [][2]float32
+			if texIdx, ok := primitive.Attributes[gltf.TEXCOORD_0]; ok {
+				texCoords, _ = modeler.ReadTextureCoord(doc, doc.Accessors[texIdx], nil)
+			}
+
+			var indices []uint32
+			if primitive.Indices != nil {
+				// ReadIndices automatically converts uint8/uint16/uint32 to []uint32
+				indices, err = modeler.ReadIndices(doc, doc.Accessors[*primitive.Indices], nil)
+				if err != nil {
+					return nil, err
+				}
+			} else {
+				// If no indices are provided, generate linear indices (0, 1, 2, ...)
+				indices = make([]uint32, len(positions))
+				for k := range indices {
+					indices[k] = uint32(k)
+				}
+			}
+
+			for i := 0; i < len(indices); i += 3 {
 				t := &Triangle{}
+				fillVertex := func(v *Vector, idx uint32, tex *Vector) {
+					// Position
+					v.Position = Vector{
+						float64(positions[idx][0]),
+						float64(positions[idx][1]),
+						float64(positions[idx][2]),
+					}
+					// Normal
+					if int(idx) < len(normals) {
+						v.Normal = Vector{
+							float64(normals[idx][0]),
+							float64(normals[idx][1]),
+							float64(normals[idx][2]),
+						}
+					}
+					// Texture
+					if int(idx) < len(texCoords) {
+						tex.Texture = Vector{
+							float64(texCoords[idx][0]),
+							float64(texCoords[idx][1]),
+							0,
+						}
+					}
+				}
 
-				// Vertex 1
-				t.V1.Position = Vector{float64(positions[i][0]), float64(positions[i][1]), float64(positions[i][2])}
-				if len(normals) > i {
-					t.V1.Normal = Vector{float64(normals[i][0]), float64(normals[i][1]), float64(normals[i][2])}
-				}
-				if len(texCoords) > i {
-					t.V1.Texture = Vector{float64(texCoords[i][0]), float64(texCoords[i][1]), 0}
-				}
-
-				// Vertex 2
-				t.V2.Position = Vector{float64(positions[i+1][0]), float64(positions[i+1][1]), float64(positions[i+1][2])}
-				if len(normals) > i+1 {
-					t.V2.Normal = Vector{float64(normals[i+1][0]), float64(normals[i+1][1]), float64(normals[i+1][2])}
-				}
-				if len(texCoords) > i+1 {
-					t.V2.Texture = Vector{float64(texCoords[i+1][0]), float64(texCoords[i+1][1]), 0}
-				}
-
-				// Vertex 3
-				t.V3.Position = Vector{float64(positions[i+2][0]), float64(positions[i+2][1]), float64(positions[i+2][2])}
-				if len(normals) > i+2 {
-					t.V3.Normal = Vector{float64(normals[i+2][0]), float64(normals[i+2][1]), float64(normals[i+2][2])}
-				}
-				if len(texCoords) > i+2 {
-					t.V3.Texture = Vector{float64(texCoords[i+2][0]), float64(texCoords[i+2][1]), 0}
-				}
+				fillVertex(&t.V1, indices[i], &t.V1)
+				fillVertex(&t.V2, indices[i+1], &t.V2)
+				fillVertex(&t.V3, indices[i+2], &t.V3)
 
 				allTriangles = append(allTriangles, t)
 			}

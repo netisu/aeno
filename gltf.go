@@ -61,37 +61,33 @@ func LoadGLTF(path string) (*Mesh, error) {
 
 			for i := 0; i < len(indices); i += 3 {
 				t := &Triangle{}
-				fillVertex := func(v *Vector, idx uint32) {
-					// Position
-					v.Position = Vector{
-						float64(positions[idx][0]),
-						float64(positions[idx][1]),
-						float64(positions[idx][2]),
-					}
-					// Normal
-					if int(idx) < len(normals) {
-						v.Normal = Vector{
-							float64(normals[idx][0]),
-							float64(normals[idx][1]),
-							float64(normals[idx][2]),
-						}
-					}
-					// Texture
-					if int(idx) < len(texCoords) {
-						tex.Texture = Vector{
-							float64(texCoords[idx][0]),
-							float64(texCoords[idx][1]),
-							0,
-						}
-					}
+				i1, i2, i3 := indices[i], indices[i+1], indices[i+2]
+
+				t.V1.Position = Vector{float64(positions[i1][0]), float64(positions[i1][1]), float64(positions[i1][2])}
+				if len(normals) > int(i1) {
+					t.V1.Normal = Vector{float64(normals[i1][0]), float64(normals[i1][1]), float64(normals[i1][2])}
+				}
+				if len(texCoords) > int(i1) {
+					t.V1.Texture = Vector{float64(texCoords[i1][0]), float64(texCoords[i1][1]), 0}
 				}
 
-				fillVertex(&t.V1, indices[i], &t.V1)
-				fillVertex(&t.V2, indices[i+1], &t.V2)
-				fillVertex(&t.V3, indices[i+2], &t.V3)
+				t.V2.Position = Vector{float64(positions[i2][0]), float64(positions[i2][1]), float64(positions[i2][2])}
+				if len(normals) > int(i2) {
+					t.V2.Normal = Vector{float64(normals[i2][0]), float64(normals[i2][1]), float64(normals[i2][2])}
+				}
+				if len(texCoords) > int(i2) {
+					t.V2.Texture = Vector{float64(texCoords[i2][0]), float64(texCoords[i2][1]), 0}
+				}
+
+				t.V3.Position = Vector{float64(positions[i3][0]), float64(positions[i3][1]), float64(positions[i3][2])}
+				if len(normals) > int(i3) {
+					t.V3.Normal = Vector{float64(normals[i3][0]), float64(normals[i3][1]), float64(normals[i3][2])}
+				}
+				if len(texCoords) > int(i3) {
+					t.V3.Texture = Vector{float64(texCoords[i3][0]), float64(texCoords[i3][1]), 0}
+				}
 				
 				t.FixNormals()
-				
 				allTriangles = append(allTriangles, t)
 			}
 		}

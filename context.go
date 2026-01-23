@@ -108,10 +108,7 @@ func edge(a, b, c Vector) float64 {
 func (dc *Context) rasterize(v0, v1, v2 Vertex, s0, s1, s2 Vector, fromObject *Object) {
 	min := s0.Min(s1.Min(s2)).Floor()
 	max := s0.Max(s1.Max(s2)).Ceil()
-	dc.MinX = mathMin(dc.MinX, int(min.X))
-	dc.MaxX = mathMax(dc.MaxX, int(max.X))
-	dc.MinY = mathMin(dc.MinY, int(min.Y))
-	dc.MaxY = mathMax(dc.MaxY, int(max.Y))
+
 	x0 := int(min.X)
 	x1 := int(max.X)
 	y0 := int(min.Y)
@@ -336,4 +333,5 @@ func (dc *Context) DrawObject(o *Object) {
 	}
 
 }
+
 

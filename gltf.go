@@ -61,7 +61,7 @@ func LoadGLTF(path string) (*Mesh, error) {
 
 			for i := 0; i < len(indices); i += 3 {
 				t := &Triangle{}
-				fillVertex := func(v *Vector, idx uint32, tex *Vector) {
+				fillVertex := func(v *Vector, idx uint32) {
 					// Position
 					v.Position = Vector{
 						float64(positions[idx][0]),
@@ -89,7 +89,9 @@ func LoadGLTF(path string) (*Mesh, error) {
 				fillVertex(&t.V1, indices[i], &t.V1)
 				fillVertex(&t.V2, indices[i+1], &t.V2)
 				fillVertex(&t.V3, indices[i+2], &t.V3)
-
+				
+				t.FixNormals()
+				
 				allTriangles = append(allTriangles, t)
 			}
 		}

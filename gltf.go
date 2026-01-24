@@ -37,6 +37,10 @@ func LoadGLTFFromReader(r io.Reader) (*Mesh, error) {
 
 	// GLTF is hierarchical. We must traverse nodes to get the correct positions.
 	if len(doc.Scenes) > 0 {
+		sceneIdx := uint32(0)
+		if doc.Scene != nil {
+			sceneIdx = *doc.Scene
+		}
 		for _, nodeIdx := range doc.Scenes[doc.Scene].Nodes {
 			allTriangles = append(allTriangles, processGLTFNode(doc, doc.Nodes[nodeIdx], Identity())...)
 		}
@@ -52,8 +56,9 @@ func processGLTFNode(doc *gltf.Document, node *gltf.Node, parentTransform Matrix
 	var triangles []*Triangle
 
 	local := Identity()
-	m := node.Matrix
-	if m != [16]float32{} {
+	
+	if node.Matrix != [16]float32{} {
+		m := node.Matrix
 		local = Matrix{
 			float64(m[0]), float64(m[4]), float64(m[8]), float64(m[12]),
 			float64(m[1]), float64(m[5]), float64(m[9]), float64(m[13]),
@@ -61,16 +66,14 @@ func processGLTFNode(doc *gltf.Document, node *gltf.Node, parentTransform Matrix
 			float64(m[3]), float64(m[7]), float64(m[11]), float64(m[15]),
 		}
 	} else {
-		if node.Translation != [3]float32{} {
+		if node.Translation != [3]float32{0, 0, 0} {
 			t := node.Translation
 			local = local.Mul(Translate(V(float64(t[0]), float64(t[1]), float64(t[2]))))
 		}
 		if node.Rotation != [4]float32{0, 0, 0, 1} {
 			r := node.Rotation
-			rotationMatrix := QuaternionToMatrix(float64(r[0]), float64(r[1]), float64(r[2]), float64(r[3]))
-			local = local.Mul(rotationMatrix)
+			local = local.Mul(quaternionToMatrix(float64(r[0]), float64(r[1]), float64(r[2]), float64(r[3])))
 		}
-
 		if node.Scale != [3]float32{1, 1, 1} {
 			s := node.Scale
 			local = local.Mul(Scale(V(float64(s[0]), float64(s[1]), float64(s[2]))))
@@ -126,11 +129,10 @@ func extractGLTFPrimitive(doc *gltf.Document, primitive *gltf.Primitive, transfo
 
 		for j, idx := range idxs {
 			localPos := V(float64(positions[idx][0]), float64(positions[idx][1]), float64(positions[idx][2]))
-			verts[j].Position = transform.MulVector(localPos)
-
+			verts[j].Position = transform.MulPosition(localPos)
 			if len(normals) > int(idx) {
 				localNorm := V(float64(normals[idx][0]), float64(normals[idx][1]), float64(normals[idx][2]))
-				verts[j].Normal = transform.MulVector(localNorm).Sub(transform.MulVector(V(0,0,0))).Normalize()
+				verts[j].Normal = transform.MulDirection(localNorm)			
 			}
 			if len(texCoords) > int(idx) {
 				verts[j].Texture = V(float64(texCoords[idx][0]), float64(texCoords[idx][1]), 0)
@@ -141,4 +143,20 @@ func extractGLTFPrimitive(doc *gltf.Document, primitive *gltf.Primitive, transfo
 		triangles = append(triangles, t)
 	}
 	return triangles
+}
+
+func quaternionToMatrix(x, y, z, w float64) Matrix {
+	m := Identity()
+	m.X00 = 1 - 2*y*y - 2*z*z
+	m.X01 = 2*x*y - 2*z*w
+	m.X02 = 2*x*z + 2*y*w
+
+	m.X10 = 2*x*y + 2*z*w
+	m.X11 = 1 - 2*x*x - 2*z*z
+	m.X12 = 2*y*z - 2*x*w
+
+	m.X20 = 2*x*z - 2*y*w
+	m.X21 = 2*y*z + 2*x*w
+	m.X22 = 1 - 2*x*x - 2*y*y
+	return m
 }

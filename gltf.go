@@ -1,95 +1,44 @@
 package aeno
 
 import (
+	"bytes"
 	"fmt"
+	"io"
+	"os"
 	"github.com/qmuntal/gltf"
 	"github.com/qmuntal/gltf/modeler"
 )
 
 // LoadGLTF loads a .gltf or .glb file and converts it to an aeno.Mesh
 func LoadGLTF(path string) (*Mesh, error) {
-	doc, err := gltf.Open(path)
+	file, err := os.Open(path)
 	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+	return LoadGLTFFromReader(file)
+}
+func LoadGLTFFromBytes(b []byte) (*Mesh, error) {
+	return LoadGLTFFromReader(bytes.NewReader(b))
+}
+
+func LoadGLTFFromReader(r io.Reader) (*Mesh, error) {
+	data, err := io.ReadAll(r)
+	if err != nil {
+		return nil, err
+	}
+
+	doc := new(gltf.Document)
+	if err := gltf.NewDecoder(bytes.NewReader(data)).Decode(doc); err != nil {
 		return nil, err
 	}
 
 	var allTriangles []*Triangle
 
-	for _, mesh := range doc.Meshes {
-		for _, primitive := range mesh.Primitives {
-			// We only support Triangles (mode 4)
-			if primitive.Mode != gltf.PrimitiveTriangles {
-				continue
-			}
-
-			// extract positions
-			posIdx, ok := primitive.Attributes[gltf.POSITION]
-			if !ok {
-				continue
-			}
-			positions, err := modeler.ReadPosition(doc, doc.Accessors[posIdx], nil)
-			if err != nil {
-				return nil, err
-			}
-			
-			// extract normals
-			var normals [][3]float32
-			if normIdx, ok := primitive.Attributes[gltf.NORMAL]; ok {
-				normals, _ = modeler.ReadNormal(doc, doc.Accessors[normIdx], nil)
-			}
-
-			// Read Texture Coordinates
-			var texCoords [][2]float32
-			if texIdx, ok := primitive.Attributes[gltf.TEXCOORD_0]; ok {
-				texCoords, _ = modeler.ReadTextureCoord(doc, doc.Accessors[texIdx], nil)
-			}
-
-			var indices []uint32
-			if primitive.Indices != nil {
-				// ReadIndices automatically converts uint8/uint16/uint32 to []uint32
-				indices, err = modeler.ReadIndices(doc, doc.Accessors[*primitive.Indices], nil)
-				if err != nil {
-					return nil, err
-				}
-			} else {
-				// If no indices are provided, generate linear indices (0, 1, 2, ...)
-				indices = make([]uint32, len(positions))
-				for k := range indices {
-					indices[k] = uint32(k)
-				}
-			}
-
-			for i := 0; i < len(indices); i += 3 {
-				t := &Triangle{}
-				i1, i2, i3 := indices[i], indices[i+1], indices[i+2]
-
-				t.V1.Position = Vector{float64(positions[i1][0]), float64(positions[i1][1]), float64(positions[i1][2])}
-				if len(normals) > int(i1) {
-					t.V1.Normal = Vector{float64(normals[i1][0]), float64(normals[i1][1]), float64(normals[i1][2])}
-				}
-				if len(texCoords) > int(i1) {
-					t.V1.Texture = Vector{float64(texCoords[i1][0]), float64(texCoords[i1][1]), 0}
-				}
-
-				t.V2.Position = Vector{float64(positions[i2][0]), float64(positions[i2][1]), float64(positions[i2][2])}
-				if len(normals) > int(i2) {
-					t.V2.Normal = Vector{float64(normals[i2][0]), float64(normals[i2][1]), float64(normals[i2][2])}
-				}
-				if len(texCoords) > int(i2) {
-					t.V2.Texture = Vector{float64(texCoords[i2][0]), float64(texCoords[i2][1]), 0}
-				}
-
-				t.V3.Position = Vector{float64(positions[i3][0]), float64(positions[i3][1]), float64(positions[i3][2])}
-				if len(normals) > int(i3) {
-					t.V3.Normal = Vector{float64(normals[i3][0]), float64(normals[i3][1]), float64(normals[i3][2])}
-				}
-				if len(texCoords) > int(i3) {
-					t.V3.Texture = Vector{float64(texCoords[i3][0]), float64(texCoords[i3][1]), 0}
-				}
-				
-				t.FixNormals()
-				allTriangles = append(allTriangles, t)
-			}
+	// GLTF is hierarchical. We must traverse nodes to get the correct positions.
+	if len(doc.Scenes) > 0 {
+		for _, nodeIdx := range doc.Scenes[doc.Scene].Nodes {
+			allTriangles = append(allTriangles, processGLTFNode(doc, doc.Nodes[nodeIdx], Identity())...)
 		}
 	}
 
@@ -98,4 +47,98 @@ func LoadGLTF(path string) (*Mesh, error) {
 	}
 
 	return NewTriangleMesh(allTriangles), nil
+}
+func processGLTFNode(doc *gltf.Document, node *gltf.Node, parentTransform Matrix) []*Triangle {
+	var triangles []*Triangle
+
+	local := Identity()
+	m := node.Matrix
+	if m != [16]float32{} {
+		local = Matrix{
+			float64(m[0]), float64(m[4]), float64(m[8]), float64(m[12]),
+			float64(m[1]), float64(m[5]), float64(m[9]), float64(m[13]),
+			float64(m[2]), float64(m[6]), float64(m[10]), float64(m[14]),
+			float64(m[3]), float64(m[7]), float64(m[11]), float64(m[15]),
+		}
+	} else {
+		if node.Translation != [3]float32{} {
+			t := node.Translation
+			local = local.Mul(Translate(V(float64(t[0]), float64(t[1]), float64(t[2]))))
+		}
+		if node.Rotation != [4]float32{0, 0, 0, 1} {
+			r := node.Rotation
+			rotationMatrix := QuaternionToMatrix(float64(r[0]), float64(r[1]), float64(r[2]), float64(r[3]))
+			local = local.Mul(rotationMatrix)
+		}
+
+		if node.Scale != [3]float32{1, 1, 1} {
+			s := node.Scale
+			local = local.Mul(Scale(V(float64(s[0]), float64(s[1]), float64(s[2]))))
+		}
+	}
+
+	worldMatrix := parentTransform.Mul(local)
+
+	if node.Mesh != nil {
+		mesh := doc.Meshes[*node.Mesh]
+		for _, primitive := range mesh.Primitives {
+			triangles = append(triangles, extractGLTFPrimitive(doc, primitive, worldMatrix)...)
+		}
+	}
+
+	for _, childIdx := range node.Children {
+		triangles = append(triangles, processGLTFNode(doc, doc.Nodes[childIdx], worldMatrix)...)
+	}
+
+	return triangles
+}
+
+func extractGLTFPrimitive(doc *gltf.Document, primitive *gltf.Primitive, transform Matrix) []*Triangle {
+	var triangles []*Triangle
+
+	posIdx, ok := primitive.Attributes[gltf.POSITION]
+	if !ok { return nil }
+	
+	positions, _ := modeler.ReadPosition(doc, doc.Accessors[posIdx], nil)
+	
+	var normals [][3]float32
+	if normIdx, ok := primitive.Attributes[gltf.NORMAL]; ok {
+		normals, _ = modeler.ReadNormal(doc, doc.Accessors[normIdx], nil)
+	}
+
+	var texCoords [][2]float32
+	if texIdx, ok := primitive.Attributes[gltf.TEXCOORD_0]; ok {
+		texCoords, _ = modeler.ReadTextureCoord(doc, doc.Accessors[texIdx], nil)
+	}
+
+	var indices []uint32
+	if primitive.Indices != nil {
+		indices, _ = modeler.ReadIndices(doc, doc.Accessors[*primitive.Indices], nil)
+	} else {
+		indices = make([]uint32, len(positions))
+		for k := range indices { indices[k] = uint32(k) }
+	}
+
+	for i := 0; i < len(indices); i += 3 {
+		t := &Triangle{}
+		idxs := []uint32{indices[i], indices[i+1], indices[i+2]}
+		verts := []*Vertex{&t.V1, &t.V2, &t.V3}
+
+		for j, idx := range idxs {
+			localPos := V(float64(positions[idx][0]), float64(positions[idx][1]), float64(positions[idx][2]))
+			verts[j].Position = transform.MulVector(localPos)
+
+			if len(normals) > int(idx) {
+				localNorm := V(float64(normals[idx][0]), float64(normals[idx][1]), float64(normals[idx][2]))
+				verts[j].Normal = transform.MulVector(localNorm).Sub(transform.MulVector(V(0,0,0))).Normalize()
+			}
+			if len(texCoords) > int(idx) {
+				verts[j].Texture = V(float64(texCoords[idx][0]), float64(texCoords[idx][1]), 0)
+			}
+		}
+
+		t.FixNormals()
+		triangles = append(triangles, t)
+	}
+	return triangles
 }

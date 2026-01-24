@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"io"
 	"os"
+
 	"github.com/qmuntal/gltf"
 	"github.com/qmuntal/gltf/modeler"
 )
 
-// LoadGLTF loads a .gltf or .glb file and converts it to an aeno.Mesh
 func LoadGLTF(path string) (*Mesh, error) {
 	file, err := os.Open(path)
 	if err != nil {
@@ -18,6 +18,7 @@ func LoadGLTF(path string) (*Mesh, error) {
 	defer file.Close()
 	return LoadGLTFFromReader(file)
 }
+
 func LoadGLTFFromBytes(b []byte) (*Mesh, error) {
 	return LoadGLTFFromReader(bytes.NewReader(b))
 }
@@ -35,13 +36,12 @@ func LoadGLTFFromReader(r io.Reader) (*Mesh, error) {
 
 	var allTriangles []*Triangle
 
-	// GLTF is hierarchical. We must traverse nodes to get the correct positions.
 	if len(doc.Scenes) > 0 {
-		sceneIdx := uint32(0)
+		sceneIdx := 0
 		if doc.Scene != nil {
-			sceneIdx = *doc.Scene
+			sceneIdx = int(*doc.Scene)
 		}
-		for _, nodeIdx := range doc.Scenes[doc.Scene].Nodes {
+		for _, nodeIdx := range doc.Scenes[sceneIdx].Nodes {
 			allTriangles = append(allTriangles, processGLTFNode(doc, doc.Nodes[nodeIdx], Identity())...)
 		}
 	}
@@ -52,12 +52,21 @@ func LoadGLTFFromReader(r io.Reader) (*Mesh, error) {
 
 	return NewTriangleMesh(allTriangles), nil
 }
+
 func processGLTFNode(doc *gltf.Document, node *gltf.Node, parentTransform Matrix) []*Triangle {
 	var triangles []*Triangle
 
 	local := Identity()
-	
-	if node.Matrix != [16]float32{} {
+
+	isDefaultMatrix := true
+	for _, val := range node.Matrix {
+		if val != 0 {
+			isDefaultMatrix = false
+			break
+		}
+	}
+
+	if !isDefaultMatrix {
 		m := node.Matrix
 		local = Matrix{
 			float64(m[0]), float64(m[4]), float64(m[8]), float64(m[12]),
@@ -100,10 +109,12 @@ func extractGLTFPrimitive(doc *gltf.Document, primitive *gltf.Primitive, transfo
 	var triangles []*Triangle
 
 	posIdx, ok := primitive.Attributes[gltf.POSITION]
-	if !ok { return nil }
-	
+	if !ok {
+		return nil
+	}
+
 	positions, _ := modeler.ReadPosition(doc, doc.Accessors[posIdx], nil)
-	
+
 	var normals [][3]float32
 	if normIdx, ok := primitive.Attributes[gltf.NORMAL]; ok {
 		normals, _ = modeler.ReadNormal(doc, doc.Accessors[normIdx], nil)
@@ -119,7 +130,9 @@ func extractGLTFPrimitive(doc *gltf.Document, primitive *gltf.Primitive, transfo
 		indices, _ = modeler.ReadIndices(doc, doc.Accessors[*primitive.Indices], nil)
 	} else {
 		indices = make([]uint32, len(positions))
-		for k := range indices { indices[k] = uint32(k) }
+		for k := range indices {
+			indices[k] = uint32(k)
+		}
 	}
 
 	for i := 0; i < len(indices); i += 3 {
@@ -132,7 +145,7 @@ func extractGLTFPrimitive(doc *gltf.Document, primitive *gltf.Primitive, transfo
 			verts[j].Position = transform.MulPosition(localPos)
 			if len(normals) > int(idx) {
 				localNorm := V(float64(normals[idx][0]), float64(normals[idx][1]), float64(normals[idx][2]))
-				verts[j].Normal = transform.MulDirection(localNorm)			
+				verts[j].Normal = transform.MulDirection(localNorm)
 			}
 			if len(texCoords) > int(idx) {
 				verts[j].Texture = V(float64(texCoords[idx][0]), float64(texCoords[idx][1]), 0)

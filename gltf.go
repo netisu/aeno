@@ -75,16 +75,18 @@ func processGLTFNode(doc *gltf.Document, node *gltf.Node, parentTransform Matrix
 			float64(m[3]), float64(m[7]), float64(m[11]), float64(m[15]),
 		}
 	} else {
-		if node.Translation != [3]float32{0, 0, 0} {
-			t := node.Translation
+		t := node.Translation
+		if t[0] != 0 || t[1] != 0 || t[2] != 0 {
 			local = local.Mul(Translate(V(float64(t[0]), float64(t[1]), float64(t[2]))))
 		}
-		if node.Rotation != [4]float32{0, 0, 0, 1} {
-			r := node.Rotation
+
+		r := node.Rotation
+		if r[0] != 0 || r[1] != 0 || r[2] != 0 || r[3] != 1 {
 			local = local.Mul(quaternionToMatrix(float64(r[0]), float64(r[1]), float64(r[2]), float64(r[3])))
 		}
-		if node.Scale != [3]float32{1, 1, 1} {
-			s := node.Scale
+
+		s := node.Scale
+		if s[0] != 1 || s[1] != 1 || s[2] != 1 {
 			local = local.Mul(Scale(V(float64(s[0]), float64(s[1]), float64(s[2]))))
 		}
 	}

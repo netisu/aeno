@@ -69,25 +69,29 @@ func processGLTFNode(doc *gltf.Document, node *gltf.Node, parentTransform Matrix
 	if !isDefaultMatrix {
 		m := node.Matrix
 		local = Matrix{
-			float64(m[0]), float64(m[4]), float64(m[8]), float64(m[12]),
-			float64(m[1]), float64(m[5]), float64(m[9]), float64(m[13]),
-			float64(m[2]), float64(m[6]), float64(m[10]), float64(m[14]),
-			float64(m[3]), float64(m[7]), float64(m[11]), float64(m[15]),
+			// Column 1
+			X00: float64(m[0]), X10: float64(m[1]), X20: float64(m[2]), X30: float64(m[3]),
+			// Column 2
+			X01: float64(m[4]), X11: float64(m[5]), X21: float64(m[6]), X31: float64(m[7]),
+			// Column 3
+			X02: float64(m[8]), X12: float64(m[9]), X22: float64(m[10]), X32: float64(m[11]),
+			// Column 4
+			X03: float64(m[12]), X13: float64(m[13]), X23: float64(m[14]), X33: float64(m[15]),
 		}
 	} else {
-		t := node.Translation
-		if t[0] != 0 || t[1] != 0 || t[2] != 0 {
-			local = local.Mul(Translate(V(float64(t[0]), float64(t[1]), float64(t[2]))))
+		s := node.Scale
+		if s[0] != 1 || s[1] != 1 || s[2] != 1 {
+			local = local.Mul(Scale(V(float64(s[0]), float64(s[1]), float64(s[2]))))
 		}
 
 		r := node.Rotation
 		if r[0] != 0 || r[1] != 0 || r[2] != 0 || r[3] != 1 {
-			local = local.Mul(quaternionToMatrix(float64(r[0]), float64(r[1]), float64(r[2]), float64(r[3])))
+			local = quaternionToMatrix(float64(r[0]), float64(r[1]), float64(r[2]), float64(r[3])).Mul(local)
 		}
 
-		s := node.Scale
-		if s[0] != 1 || s[1] != 1 || s[2] != 1 {
-			local = local.Mul(Scale(V(float64(s[0]), float64(s[1]), float64(s[2]))))
+		t := node.Translation
+		if t[0] != 0 || t[1] != 0 || t[2] != 0 {
+			local = Translate(V(float64(t[0]), float64(t[1]), float64(t[2]))).Mul(local)
 		}
 	}
 

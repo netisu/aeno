@@ -80,8 +80,8 @@ func processGLTFNode(doc *gltf.Document, node *gltf.Node, parentTransform Matrix
 		}
 	} else {
 		s := node.Scale
-		if s[0] != 1 || s[1] != 1 || s[2] != 1 {
-			local = local.Mul(Scale(V(float64(s[0]), float64(s[1]), float64(s[2]))))
+		if (s[0] != 1 || s[1] != 1 || s[2] != 1) && (s[0] != 0 || s[1] != 0 || s[2] != 0) {
+    		local = local.Mul(Scale(V(float64(s[0]), float64(s[1]), float64(s[2]))))
 		}
 
 		r := node.Rotation

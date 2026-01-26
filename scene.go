@@ -70,17 +70,18 @@ func (s *Scene) FitObjectsToScene(fovy, aspect, near, far float64) {
 		
 		allInside := false
 		for !allInside && len(tris) > 0 {
-			allInside = true
 			for _, t := range tris {
 				v1 := shader.Vertex(t.V1)
 				v2 := shader.Vertex(t.V2)
 				v3 := shader.Vertex(t.V3)
 
 				if v1.Outside() || v2.Outside() || v3.Outside() {
-					addedFOV += 5.0
+					addedFOV += 5
 					matrix = viewMatrix.Perspective(fovy+addedFOV, aspect, near, far)
 					shader.Matrix = matrix
 					allInside = false
+				} else {
+					allInside = true
 				}
 			}
 		}
@@ -184,3 +185,4 @@ func GenerateSceneToWriter(writer io.Writer, objects []*Object, eye Vector, cent
 
 	return png.Encode(writer, scene.Context.Image())
 }
+

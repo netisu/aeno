@@ -57,7 +57,6 @@ func processGLTFNode(doc *gltf.Document, node *gltf.Node, parentTransform Matrix
 	var triangles []*Triangle
 
 	local := Identity()
-
 	isDefaultMatrix := true
 	for _, val := range node.Matrix {
 		if val != 0 {
@@ -69,32 +68,38 @@ func processGLTFNode(doc *gltf.Document, node *gltf.Node, parentTransform Matrix
 	if !isDefaultMatrix {
 		m := node.Matrix
 		local = Matrix{
-			// Column 1
-			X00: float64(m[0]), X10: float64(m[1]), X20: float64(m[2]), X30: float64(m[3]),
-			// Column 2
-			X01: float64(m[4]), X11: float64(m[5]), X21: float64(m[6]), X31: float64(m[7]),
-			// Column 3
-			X02: float64(m[8]), X12: float64(m[9]), X22: float64(m[10]), X32: float64(m[11]),
-			// Column 4
-			X03: float64(m[12]), X13: float64(m[13]), X23: float64(m[14]), X33: float64(m[15]),
+			X00: float64(m[0]), X01: float64(m[4]), X02: float64(m[8]), X03: float64(m[12]),
+			X10: float64(m[1]), X11: float64(m[5]), X12: float64(m[9]), X13: float64(m[13]),
+			X20: float64(m[2]), X21: float64(m[6]), X22: float64(m[10]), X23: float64(m[14]),
+			X30: float64(m[3]), X31: float64(m[7]), X32: float64(m[11]), X33: float64(m[15]),
 		}
 	} else {
+		
 		s := node.Scale
-		if (s[0] != 1 || s[1] != 1 || s[2] != 1) && (s[0] != 0 || s[1] != 0 || s[2] != 0) {
-    		local = local.Mul(Scale(V(float64(s[0]), float64(s[1]), float64(s[2]))))
+		sx, sy, sz := float64(s[0]), float64(s[1]), float64(s[2])
+		if sx == 0 && sy == 0 && sz == 0 {
+			sx, sy, sz = 1, 1, 1
 		}
+		local = local.Mul(Scale(V(sx, sy, sz)))
 
 		r := node.Rotation
-		if r[0] != 0 || r[1] != 0 || r[2] != 0 || r[3] != 1 {
-			local = quaternionToMatrix(float64(r[0]), float64(r[1]), float64(r[2]), float64(r[3])).Mul(local)
+		rx, ry, rz, rw := float64(r[0]), float64(r[1]), float64(r[2]), float64(r[3])
+		if rx == 0 && ry == 0 && rz == 0 && rw == 0 {
+			rw = 1
 		}
+		rotMat := quaternionToMatrix(rx, ry, rz, rw)
+		local = rotMat.Mul(local)
 
+		// Translation
 		t := node.Translation
-		if t[0] != 0 || t[1] != 0 || t[2] != 0 {
-			local = Translate(V(float64(t[0]), float64(t[1]), float64(t[2]))).Mul(local)
+		tx, ty, tz := float64(t[0]), float64(t[1]), float64(t[2])
+		if tx != 0 || ty != 0 || tz != 0 {
+			fmt.Printf("DEBUG: Applying Translation to %s: [%.2f, %.2f, %.2f]\n", node.Name, tx, ty, tz)
 		}
+		local = Translate(V(tx, ty, tz)).Mul(local)
 	}
 
+	// Calculate World Matrix
 	worldMatrix := parentTransform.Mul(local)
 
 	if node.Mesh != nil {

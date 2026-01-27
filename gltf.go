@@ -161,9 +161,7 @@ func extractGLTFPrimitive(doc *gltf.Document, primitive *gltf.Primitive, transfo
 				verts[j].Normal = transform.MulDirection(localNorm)
 			}
 			if len(texCoords) > int(idx) {
-				u := float64(texCoords[idx][0])
-    			v := float64(texCoords[idx][1])
-				verts[j].Texture = V(u, 1.0-v, 0)
+				verts[j].Texture = V(float64(texCoords[idx][0]), float64(texCoords[idx][1]), 0)
 			}
 		}
 

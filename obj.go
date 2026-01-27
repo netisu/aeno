@@ -43,7 +43,7 @@ func LoadOBJFromReader(r io.Reader) (*Mesh, error) {
 		case "v":
 			vs = append(vs, Vector{pf(fields[1]), pf(fields[2]), pf(fields[3])})
 		case "vt":
-			vts = append(vts, Vector{pf(fields[1]), pf(fields[2]), 0})
+			vts = append(vts, Vector{pf(fields[1]), 1 - pf(fields[2]), 0})
 		case "vn":
 			vns = append(vns, Vector{pf(fields[1]), pf(fields[2]), pf(fields[3])})
 		case "f":

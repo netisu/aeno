@@ -66,8 +66,6 @@ func (t *ImageTexture) Sample(u, v float64) Color {
 	// Wrap coords
 	u = u - math.Floor(u)
 	v = v - math.Floor(v)
-	// Flip V for standard UV coords
-	v = 1 - v 
 	
 	x := int(u * float64(t.Width))
 	y := int(v * float64(t.Height))

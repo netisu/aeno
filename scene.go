@@ -155,9 +155,7 @@ func GenerateScene(fit bool, path string, objects []*Object, eye Vector, center 
 }
 
 func GenerateSceneToWriter(writer io.Writer, objects []*Object, eye Vector, center Vector, up Vector, fovy float64, size int, scale int, light Vector, ambient string, diffuse string, near, far float64, fit bool) error {
-	width := size * scale
-	height := size * scale
-	aspect := float64(width) / float64(height)
+	aspect := float64(size) / float64(size)
 
 	// Initial matrix setup
 	matrix := LookAt(eye, center, up).Perspective(fovy, aspect, near, far)
@@ -174,15 +172,9 @@ func GenerateSceneToWriter(writer io.Writer, objects []*Object, eye Vector, cent
 
 	if fit {
 		scene.FitObjectsToScene(fovy, aspect, near, far)
-		
-		// Re-sync shader after the fit changes scene.Eye/FOV
-		view := LookAt(scene.Eye, scene.Center, scene.Up)
-		scene.Context.Shader.(*PhongShader).Matrix = view.Perspective(fovy, aspect, near, far)
-		scene.Context.Shader.(*PhongShader).CameraPosition = scene.Eye
 	}
 
 	scene.Render()
 
 	return png.Encode(writer, scene.Context.Image())
 }
-

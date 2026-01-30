@@ -73,9 +73,9 @@ func ClipTriangle(t *Triangle) []*Triangle {
 		v3 := InterpolateVertexes(t.V1, t.V2, t.V3, b3)
 		
 		// Update outputs to match new clipped positions
-		v1.Output = newPoints[0]
-		v2.Output = newPoints[i-1]
-		v3.Output = newPoints[i]
+		// v1.Output = newPoints[0]
+		// v2.Output = newPoints[i-1]
+		// v3.Output = newPoints[i]
 		
 		result = append(result, NewTriangle(v1, v2, v3))
 	}

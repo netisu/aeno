@@ -179,12 +179,12 @@ func GenerateSceneToWriter(writer io.Writer, objects []*Object, eye Vector, cent
 	scene.Render()
 	
     if scale > 1 {
-        // Use the resize package as in your original code
         resized := resize.Resize(uint(size), uint(size), scene.Context.Image(), resize.Bilinear)
         return png.Encode(writer, resized)
     }
 
 	return png.Encode(writer, scene.Context.Image())
 }
+
 
 

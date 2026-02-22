@@ -161,7 +161,7 @@ func GenerateSceneToWriter(writer io.Writer, objects []*Object, eye Vector, cent
 	matrix := LookAt(eye, center, up).Perspective(fovy, aspect, near, far)
 	shader := NewPhongShader(matrix, light, eye, HexColor(ambient), HexColor(diffuse))
 	
-	scene := NewScene(size, size, shader)
+	scene := NewScene(size*scale, size*scale, shader)
 	scene.Objects = objects
 	scene.Eye = eye
 	scene.Center = center
@@ -178,4 +178,5 @@ func GenerateSceneToWriter(writer io.Writer, objects []*Object, eye Vector, cent
 
 	return png.Encode(writer, scene.Context.Image())
 }
+
 

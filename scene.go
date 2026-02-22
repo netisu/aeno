@@ -155,13 +155,14 @@ func GenerateScene(fit bool, path string, objects []*Object, eye Vector, center 
 }
 
 func GenerateSceneToWriter(writer io.Writer, objects []*Object, eye Vector, center Vector, up Vector, fovy float64, size int, scale int, light Vector, ambient string, diffuse string, near, far float64, fit bool) error {
-	aspect := float64(size) / float64(size)
+	renderSize := size * scale
+    aspect := float64(size) / float64(size)
 
 	// Initial matrix setup
 	matrix := LookAt(eye, center, up).Perspective(fovy, aspect, near, far)
 	shader := NewPhongShader(matrix, light, eye, HexColor(ambient), HexColor(diffuse))
 	
-	scene := NewScene(size*scale, size*scale, shader)
+	scene := NewScene(renderSize, renderSize, shader)
 	scene.Objects = objects
 	scene.Eye = eye
 	scene.Center = center
@@ -175,8 +176,13 @@ func GenerateSceneToWriter(writer io.Writer, objects []*Object, eye Vector, cent
 	}
 
 	scene.Render()
+	
+	if scale > 1 {
+        resized := image.NewRGBA(image.Rect(0, 0, size, size))
+        draw.CatmullRom.Scale(resized, resized.Bounds(), scene.Context.Image(), 
+                             scene.Context.Image().Bounds(), draw.Over, nil)
+        return png.Encode(writer, resized)
+    }
 
 	return png.Encode(writer, scene.Context.Image())
 }
-
-

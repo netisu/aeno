@@ -1,6 +1,8 @@
 package aeno
 
 import (
+	"image"
+    "image/draw"
 	"image/png"
 	"io"
 	"os"
@@ -186,3 +188,4 @@ func GenerateSceneToWriter(writer io.Writer, objects []*Object, eye Vector, cent
 
 	return png.Encode(writer, scene.Context.Image())
 }
+

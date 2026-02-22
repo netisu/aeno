@@ -1,8 +1,7 @@
 package aeno
 
 import (
-	"image"
-    "image/draw"
+    "github.com/nfnt/resize"
 	"image/png"
 	"io"
 	"os"
@@ -179,13 +178,13 @@ func GenerateSceneToWriter(writer io.Writer, objects []*Object, eye Vector, cent
 
 	scene.Render()
 	
-	if scale > 1 {
-        resized := image.NewRGBA(image.Rect(0, 0, size, size))
-        draw.CatmullRom.Scale(resized, resized.Bounds(), scene.Context.Image(), 
-                             scene.Context.Image().Bounds(), draw.Over, nil)
+    if scale > 1 {
+        // Use the resize package as in your original code
+        resized := resize.Resize(uint(size), uint(size), scene.Context.Image(), resize.Bilinear)
         return png.Encode(writer, resized)
     }
 
 	return png.Encode(writer, scene.Context.Image())
 }
+
 

@@ -60,18 +60,21 @@ func (shader *PhongShader) Fragment(v Vertex, fromObject *Object) Color {
 	}
 	// If the object is flagged to use vertex colors, we return the
 	// interpolated vertex color and skip all lighting and texturing.
-	if fromObject.UseVertexColor {
-		return v.Color
-	}
+	color := fromObject.Color
+    if fromObject.UseVertexColor {
+        color = v.Color
+    }
 	
 	light := shader.AmbientColor
 	color := fromObject.Color
 	if fromObject.Texture != nil {
-		sample := fromObject.Texture.Sample(v.Texture.X, v.Texture.Y)
-		if sample.A > 0 {
-			color = color.Lerp(sample.DivScalar(sample.A), sample.A)
-		}
-	}
+        sample := fromObject.Texture.Sample(v.Texture.X, v.Texture.Y)
+        if fromObject.UseVertexColor {
+            color = color.Mul(sample)
+        } else if sample.A > 0 {
+            color = color.Lerp(sample.DivScalar(sample.A), sample.A)
+        }
+    }
 	diffuse := math.Max(v.Normal.Dot(shader.LightDirection), 0)
 	light = light.Add(shader.DiffuseColor.MulScalar(diffuse))
 	if diffuse > 0 && shader.SpecularPower > 0 {

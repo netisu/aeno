@@ -153,8 +153,15 @@ func (dc *Context) rasterize(v0, v1, v2 Vertex, s0, s1, s2 Vector, fromObject *O
 				if !dc.ReadDepth || bz <= dc.DepthBuffer[i] {
 					
 					// Interpolate
-					b := VectorW{b0 * r0, b1 * r1, b2 * r2, 0}
-					b.W = 1 / (b.X + b.Y + b.Z)
+					invW := b0*r0 + b1*r1 + b2*r2
+
+					// To get the correct barycentric weights for perspective, 
+					// we must divide the weighted 1/W values by the total invW.
+					perspectiveB0 := (b0 * r0) / invW
+					perspectiveB1 := (b1 * r1) / invW
+					perspectiveB2 := (b2 * r2) / invW
+
+					b := VectorW{perspectiveB0, perspectiveB1, perspectiveB2, 1.0 / invW}
 					v := InterpolateVertexes(v0, v1, v2, b)
 
 					colorVal := dc.Shader.Fragment(v, fromObject)

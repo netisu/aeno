@@ -158,6 +158,9 @@ func (dc *Context) rasterize(v0, v1, v2 Vertex, s0, s1, s2 Vector, fromObject *O
 					v := InterpolateVertexes(v0, v1, v2, b)
 
 					colorVal := dc.Shader.Fragment(v, fromObject)
+					if colorVal.A < 0.1 { 
+   						continue 
+					}
 
 					if colorVal.A > 0 {
 						// Critical Section

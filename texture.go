@@ -84,6 +84,9 @@ func (t *ImageTexture) BilinearSample(u, v float64) Color {
     x0, y0 := int(u), int(v)
     x1, y1 := x0+1, y0+1
 
+	if x1 >= t.Width { x1 = x0 }
+    if y1 >= t.Height { y1 = y0 }
+
     uFrac, vFrac := u-float64(x0), v-float64(y0)
 
     c00 := MakeColor(t.Image.At(x0, y0))

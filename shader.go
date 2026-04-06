@@ -67,7 +67,7 @@ func (shader *PhongShader) Fragment(v Vertex, fromObject *Object) Color {
 	
 	light := shader.AmbientColor
 	if fromObject.Texture != nil {
-        sample := fromObject.Texture.Sample(v.Texture.X, v.Texture.Y)
+        sample := fromObject.Texture.BilinearSample(v.Texture.X, v.Texture.Y)
         if fromObject.UseVertexColor {
             color = color.Mul(sample)
         } else if sample.A > 0 {

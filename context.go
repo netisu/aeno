@@ -153,21 +153,11 @@ func (dc *Context) rasterize(v0, v1, v2 Vertex, s0, s1, s2 Vector, fromObject *O
 				if !dc.ReadDepth || bz <= dc.DepthBuffer[i] {
 					
 					// Interpolate
-					invW := b0*r0 + b1*r1 + b2*r2
-					
-					pixelW := 1.0 / invW
-
-					pb0 := (b0 * r0) * pixelW
-    				pb1 := (b1 * r1) * pixelW
-    				pb2 := (b2 * r2) * pixelW
-					
-    				b := VectorW{pb0, pb1, pb2, pixelW}
-    				v := InterpolateVertexes(v0, v1, v2, b)
+					b := VectorW{b0 * r0, b1 * r1, b2 * r2, 0}
+					b.W = 1 / (b.X + b.Y + b.Z)
+					v := InterpolateVertexes(v0, v1, v2, b)
 
 					colorVal := dc.Shader.Fragment(v, fromObject)
-					if colorVal.A < 0.1 { 
-   						continue 
-					}
 
 					if colorVal.A > 0 {
 						// Critical Section
@@ -343,5 +333,4 @@ func (dc *Context) DrawObject(o *Object) {
 	}
 
 }
-
 

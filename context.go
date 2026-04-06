@@ -153,16 +153,16 @@ func (dc *Context) rasterize(v0, v1, v2 Vertex, s0, s1, s2 Vector, fromObject *O
 				if !dc.ReadDepth || bz <= dc.DepthBuffer[i] {
 					
 					// Interpolate
-					b0 := w0 * ra
-					b1 := w1 * ra
-					b2 := w2 * ra
-
-					invW := b0*r0 + b1*r1 + b2*r2 
-
+					invW := b0*r0 + b1*r1 + b2*r2
+					
 					pixelW := 1.0 / invW
 
-					b := VectorW{b0 * r0, b1 * r1, b2 * r2, pixelW}
-					v := InterpolateVertexes(v0, v1, v2, b)
+					pb0 := (b0 * r0) * pixelW
+    				pb1 := (b1 * r1) * pixelW
+    				pb2 := (b2 * r2) * pixelW
+					
+    				b := VectorW{pb0, pb1, pb2, pixelW}
+    				v := InterpolateVertexes(v0, v1, v2, b)
 
 					colorVal := dc.Shader.Fragment(v, fromObject)
 					if colorVal.A < 0.1 { 

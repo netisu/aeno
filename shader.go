@@ -85,9 +85,13 @@ func (shader *PhongShader) Fragment(v Vertex, fromObject *Object) Color {
 			light = light.Add(shader.SpecularColor.MulScalar(specular))
 		}
 	}
-	if color.A < 1 {
-		return color.Mul(light).Min(White).DivScalar(color.A).Alpha(color.A)
-	}
+	
+	final := color.Mul(light).Min(White)
+    if color.A > 0.0001 && color.A < 1.0 {
+        return final.DivScalar(color.A).Alpha(color.A)
+    } else if color.A <= 0.0001 {
+        return color.Alpha(0) 
+    }
 
-	return color.Mul(light).Min(White).Alpha(color.A)
+    return final.Alpha(color.A)
 }

@@ -85,13 +85,16 @@ func (t *ImageTexture) BilinearSample(u, v float64) Color {
     vScaled := v * float64(t.Height-1)
 
     x0, y0 := int(uScaled), int(vScaled)
-    x1, y1 := x0+1, y0+1
-
-	if x1 >= t.Width { x1 = x0 }
-    if y1 >= t.Height { y1 = y0 }
-
-    uFrac := uScaled - float64(x0)
-    vFrac := vScaled - float64(y0)
+	
+    x1 := x0 + 1
+    y1 := y0 + 1
+    if x1 >= t.Width { x1 = t.Width - 1 }
+    if y1 >= t.Height { y1 = t.Height - 1 }
+    if x0 >= t.Width { x0 = t.Width - 1 } // Safety clamp
+    if y0 >= t.Height { y0 = t.Height - 1 }
+	
+	uFrac := uScaled - math.Floor(uScaled)
+    vFrac := vScaled - math.Floor(vScaled)
 
     c00 := MakeColor(t.Image.At(x0, y0))
     c10 := MakeColor(t.Image.At(x1, y0))

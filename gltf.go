@@ -10,97 +10,93 @@ import (
 	"github.com/qmuntal/gltf/modeler"
 )
 
-func LoadGLTF(path string) (*Mesh, error) {
+func LoadGLTF(path string) (*Mesh, Matrix, error) {
 	file, err := os.Open(path)
 	if err != nil {
-		return nil, err
+		return nil, Identity(), err
 	}
 	defer file.Close()
 	return LoadGLTFFromReader(file)
 }
 
-func LoadGLTFFromBytes(b []byte) (*Mesh, error) {
+func LoadGLTFFromBytes(b []byte) (*Mesh, Matrix, error) {
 	return LoadGLTFFromReader(bytes.NewReader(b))
 }
 
-func LoadGLTFFromReader(r io.Reader) (*Mesh, error) {
+func LoadGLTFFromReader(r io.Reader) (*Mesh, Matrix, error) {
 	data, err := io.ReadAll(r)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read GLTF data: %v", err)
+		return nil, Identity(), fmt.Errorf("failed to read GLTF data: %v", err)
 	}
 
 	doc := new(gltf.Document)
 	if err := gltf.NewDecoder(bytes.NewReader(data)).Decode(doc); err != nil {
-		return nil, fmt.Errorf("failed to decode GLTF: %v", err)
+		return nil, Identity(), fmt.Errorf("failed to decode GLTF: %v", err)
 	}
 
 	var allTriangles []*Triangle
+	sceneIdx := 0
+	if doc.Scene != nil {
+		sceneIdx = int(*doc.Scene)
+	}
 
-	if len(doc.Scenes) > 0 {
-		sceneIdx := 0
-		if doc.Scene != nil {
-			sceneIdx = int(*doc.Scene)
-		}
-		fmt.Printf("DEBUG: Processing Scene %d with %d root nodes\n", sceneIdx, len(doc.Scenes[sceneIdx].Nodes))
-		for _, nodeIdx := range doc.Scenes[sceneIdx].Nodes {
-			allTriangles = append(allTriangles, processGLTFNode(doc, doc.Nodes[nodeIdx], Identity())...)
-		}
-	} else {
-		fmt.Println("DEBUG: GLTF has no scenes!")
+	minX, minY, minZ := 1e10, 1e10, 1e10
+	maxX, maxY, maxZ := -1e10, -1e10, -1e10
+
+	for _, nodeIdx := range doc.Scenes[sceneIdx].Nodes {
+		allTriangles = append(allTriangles, processGLTFNode(doc, doc.Nodes[nodeIdx], Identity())...)
 	}
 
 	if len(allTriangles) == 0 {
-		return nil, fmt.Errorf("no triangles found in gltf")
+		return nil, Identity(), fmt.Errorf("no triangles found in gltf")
 	}
 
-	return NewTriangleMesh(allTriangles), nil
-}
-
-func processGLTFNode(doc *gltf.Document, node *gltf.Node, parentTransform Matrix) []*Triangle {
-	var triangles []*Triangle
-
-	local := Identity()
-
-	// RAW VALUES
-	t := node.Translation
-	r := node.Rotation
-	s := node.Scale
-	m := node.Matrix
-
-	sx, sy, sz := float64(s[0]), float64(s[1]), float64(s[2])
-	if sx == 0 && sy == 0 && sz == 0 { 
-		sx, sy, sz = 1, 1, 1 
-	}
-	local = local.Mul(Scale(V(sx, sy, sz))) // S * I
-
-	rx, ry, rz, rw := float64(r[0]), float64(r[1]), float64(r[2]), float64(r[3])
-	if rx == 0 && ry == 0 && rz == 0 && rw == 0 {
-		rw = 1
-	}
-	if rx != 0 || ry != 0 || rz != 0 || rw != 1 {
-		local = quaternionToMatrix(rx, ry, rz, rw).Mul(local) // R * S
-	}
-
-	tx, ty, tz := float64(t[0]), float64(t[1]), float64(t[2])
-	if tx != 0 || ty != 0 || tz != 0 {
-		fmt.Printf("DEBUG: Node '%s' Translate: [%.2f, %.2f, %.2f]\n", node.Name, tx, ty, tz)
-		local = Translate(V(tx, ty, tz)).Mul(local) // T * R * S
-	} else {
-		isMatrixZero := true
-		for _, v := range m {
-			if v != 0 { isMatrixZero = false; break }
-		}
-		if !isMatrixZero {
-			fmt.Printf("DEBUG: Node '%s' using Matrix fallback\n", node.Name)
-			local = Matrix{
-				X00: float64(m[0]), X01: float64(m[4]), X02: float64(m[8]), X03: float64(m[12]),
-				X10: float64(m[1]), X11: float64(m[5]), X12: float64(m[9]), X13: float64(m[13]),
-				X20: float64(m[2]), X21: float64(m[6]), X22: float64(m[10]), X23: float64(m[14]),
-				X30: float64(m[3]), X31: float64(m[7]), X32: float64(m[11]), X33: float64(m[15]),
+	for _, t := range allTriangles {
+		verts := []*Vertex{&t.V1, &t.V2, &t.V3}
+		for _, v := range verts {
+			if v.Position.X < minX {
+				minX = v.Position.X
+			}
+			if v.Position.Y < minY {
+				minY = v.Position.Y
+			}
+			if v.Position.Z < minZ {
+				minZ = v.Position.Z
+			}
+			if v.Position.X > maxX {
+				maxX = v.Position.X
+			}
+			if v.Position.Y > maxY {
+				maxY = v.Position.Y
+			}
+			if v.Position.Z > maxZ {
+				maxZ = v.Position.Z
 			}
 		}
 	}
 
+	centerX := (minX + maxX) / 2
+	centerY := (minY + maxY) / 2
+	centerZ := (minZ + maxZ) / 2
+	rootMatrix := Translate(V(centerX, centerY, centerZ))
+
+	// Object.Matrix (rootMatrix) now represents its world position exactly like a Roblox Part.CFrame
+	invRoot := rootMatrix.Inverse()
+	for _, t := range allTriangles {
+		t.V1.Position = invRoot.MulPosition(t.V1.Position)
+		t.V2.Position = invRoot.MulPosition(t.V2.Position)
+		t.V3.Position = invRoot.MulPosition(t.V3.Position)
+	}
+
+	fmt.Printf("DEBUG: Model Bounds: Min[%.2f, %.2f, %.2f] Max[%.2f, %.2f, %.2f]\n", minX, minY, minZ, maxX, maxY, maxZ)
+	fmt.Printf("DEBUG: Calculated Object Position: [%.3f, %.3f, %.3f]\n", centerX, centerY, centerZ)
+
+	return NewTriangleMesh(allTriangles), rootMatrix, nil
+}
+func processGLTFNode(doc *gltf.Document, node *gltf.Node, parentTransform Matrix) []*Triangle {
+	var triangles []*Triangle
+
+	local := calculateNodeMatrix(node)
 	worldMatrix := parentTransform.Mul(local)
 
 	if node.Mesh != nil {
@@ -155,7 +151,7 @@ func extractGLTFPrimitive(doc *gltf.Document, primitive *gltf.Primitive, transfo
 		for j, idx := range idxs {
 			localPos := V(float64(positions[idx][0]), float64(positions[idx][1]), float64(positions[idx][2]))
 			verts[j].Position = transform.MulPosition(localPos)
-			
+
 			if len(normals) > int(idx) {
 				localNorm := V(float64(normals[idx][0]), float64(normals[idx][1]), float64(normals[idx][2]))
 				verts[j].Normal = transform.MulDirection(localNorm)
@@ -185,4 +181,52 @@ func quaternionToMatrix(x, y, z, w float64) Matrix {
 	m.X21 = 2*y*z + 2*x*w
 	m.X22 = 1 - 2*x*x - 2*y*y
 	return m
+}
+
+func calculateNodeMatrix(node *gltf.Node) Matrix {
+	local := Identity()
+
+	// RAW VALUES
+	t := node.Translation
+	r := node.Rotation
+	s := node.Scale
+	m := node.Matrix
+
+	sx, sy, sz := float64(s[0]), float64(s[1]), float64(s[2])
+	if sx == 0 && sy == 0 && sz == 0 {
+		sx, sy, sz = 1, 1, 1
+	}
+	local = local.Mul(Scale(V(sx, sy, sz))) // S * I
+
+	rx, ry, rz, rw := float64(r[0]), float64(r[1]), float64(r[2]), float64(r[3])
+	if rx == 0 && ry == 0 && rz == 0 && rw == 0 {
+		rw = 1
+	}
+	if rx != 0 || ry != 0 || rz != 0 || rw != 1 {
+		local = quaternionToMatrix(rx, ry, rz, rw).Mul(local) // R * S
+	}
+
+	tx, ty, tz := float64(t[0]), float64(t[1]), float64(t[2])
+	if tx != 0 || ty != 0 || tz != 0 {
+		fmt.Printf("DEBUG: Node '%s' Translate: [%.2f, %.2f, %.2f]\n", node.Name, tx, ty, tz)
+		local = Translate(V(tx, ty, tz)).Mul(local) // T * R * S
+	} else {
+		isMatrixZero := true
+		for _, v := range m {
+			if v != 0 {
+				isMatrixZero = false
+				break
+			}
+		}
+		if !isMatrixZero {
+			fmt.Printf("DEBUG: Node '%s' using Matrix fallback\n", node.Name)
+			local = Matrix{
+				X00: float64(m[0]), X01: float64(m[4]), X02: float64(m[8]), X03: float64(m[12]),
+				X10: float64(m[1]), X11: float64(m[5]), X12: float64(m[9]), X13: float64(m[13]),
+				X20: float64(m[2]), X21: float64(m[6]), X22: float64(m[10]), X23: float64(m[14]),
+				X30: float64(m[3]), X31: float64(m[7]), X32: float64(m[11]), X33: float64(m[15]),
+			}
+		}
+	}
+	return local
 }

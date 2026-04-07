@@ -62,7 +62,7 @@ func (shader *PhongShader) Fragment(v Vertex, fromObject *Object) Color {
 	// interpolated vertex color and skip all lighting and texturing.
 	color := fromObject.Color
     if fromObject.UseVertexColor {
-        color = v.Color
+        color = color.Mul(v.Color)
     }
 	
 	light := shader.AmbientColor

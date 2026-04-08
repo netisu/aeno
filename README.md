@@ -1,10 +1,8 @@
-eW91IGhhdmUgZm91bmQgdGhlIGRldmVsb3BlciBlZ2cuCgoKNWFmYTU5NmJiNDAxZTY5ZmZlMWE4Y2RkYTdhNmYxN2NkOWVlZjYxNzVmNzI0NzE3NDlhMGRhOWM1NjljMWM1NA==
-
 <br>
 
 # Aeno
 
-Aeno is a modified FauxGl port that adds optimization, The Weiler Atherton algorithm and pure 3D software rendering in Go. Without OpenGL, C extensions, or anything of that matter.
+Aeno is a modified FauxGl port that adds several optimizations, The Weiler Atherton algorithm and pure 3D software rendering in Go. Without OpenGL, C extensions, or anything of that matter.
 
 <br>
 
@@ -18,13 +16,13 @@ It doesn't use your graphics card, only your CPU. So it's slow and unsuitable fo
 
 ### Features
 
-- STL, OBJ, PLY, 3DS file formats
+- GLTF, OBJ, NTSM file formats
 - triangle rasterization
 - vertex and fragment "shaders"
 - view volume clipping
 - face culling
 - alpha blending
-- textures
+- vertex and image-based textures
 - triangle & line meshes
 - depth biasing
 - wireframe rendering

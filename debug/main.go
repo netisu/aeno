@@ -11,7 +11,7 @@ func main() {
 	path := "arm_left.glb" 
 	
 	fmt.Println("--- STARTING DEBUG ---")
-	mesh, matrix, err := aeno.LoadGLTF(path)
+	mesh, _, err := aeno.LoadGLTF(path)
 	if err != nil {
 		log.Fatal(err)
 	}

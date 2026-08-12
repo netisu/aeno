@@ -82,7 +82,7 @@ func (s *Scene) FitObjectsToScene(fovy, aspect, near, far float64) {
     		if !stillOutside {
         		break
     		}
-    		addedFOV += 2
+    		addedFOV += 8
     		matrix = viewMatrix.Perspective(fovy+addedFOV, aspect, near, far)
     		shader.Matrix = matrix
 		}
